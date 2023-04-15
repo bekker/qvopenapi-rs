@@ -5,10 +5,23 @@ extern crate qvopenapi_sys;
 mod error;
 pub use error::*;
 
+mod window;
+
 static mut WMCA_LIB: Option<WmcaLib> = None;
 
-pub fn is_connected() -> Result<bool, QvOpenApiError> {
-	Ok((get_lib()?.is_connected)() != 0)
+pub fn init() -> Result<(), QvOpenApiError> {
+	load_lib()?;
+	window::create_window();
+	Ok(())
+}
+
+fn load_lib() -> Result<(), QvOpenApiError> {
+	unsafe {
+		println!("Loading wmca.dll");
+		WMCA_LIB = Some(qvopenapi_sys::load_lib()?);
+		println!("Loaded wmca.dll");
+		Ok(())
+	}
 }
 
 fn get_lib() -> Result<&'static WmcaLib, QvOpenApiError> {
@@ -20,9 +33,6 @@ fn get_lib() -> Result<&'static WmcaLib, QvOpenApiError> {
 	}
 }
 
-pub fn load_lib() -> Result<(), QvOpenApiError> {
-	unsafe {
-		WMCA_LIB = Some(qvopenapi_sys::load_lib()?);
-		Ok(())
-	}
+pub fn is_connected() -> Result<bool, QvOpenApiError> {
+	Ok((get_lib()?.is_connected)() != 0)
 }

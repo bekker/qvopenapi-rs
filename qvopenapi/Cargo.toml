@@ -9,6 +9,7 @@ edition = "2021"
 qvopenapi-sys = { path = "../qvopenapi-sys" }
 custom_error = { workspace = true }
 libloading = { workspace = true }
+windows = { workspace = true }
 
 [features]
 disable-unwind = [ "qvopenapi-sys/disable-unwind" ]

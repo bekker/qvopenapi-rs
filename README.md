@@ -6,8 +6,7 @@
 - Wine을 통해 리눅스에서 실행할 수 있는 Docker 이미지
 
 ## Current Status
-- 아직 아무것도 안됨!
-- [ ] DLL wrapping
+- [x] DLL wrapping
 - [ ] 편하게 사용할 수 있도록 자동으로 Windows 애플리케이션을 실행 및 이벤트를 관리하는 라이브러리
 - [ ] REST API 형태로 호출할 수 있는 웹서버 애플리케이션
 - [ ] Wine을 통해 리눅스에서 실행할 수 있는 Docker 이미지
