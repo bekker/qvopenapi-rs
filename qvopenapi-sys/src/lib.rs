@@ -6,6 +6,6 @@
 #[no_mangle]
 pub extern "C" fn _Unwind_Resume() {}
 
-pub fn add(left: usize, right: usize) -> usize {
-    left + right
+pub fn add(a: i32, b: i32) -> i32 {
+    a + b
 }

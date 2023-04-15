@@ -1,9 +1,11 @@
-[package]
-name = "qvopenapi"
-version = "0.1.0"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+members = [
+    "qvopenapi",
+    "qvopenapi-sys",
+    "qvopenapi-webserver",
+]
+
 
 # https://github.com/rust-lang/rust/issues/79609
 # To bypass missing 'dwarf' exception handling on mingw i686 installations,
@@ -13,6 +15,3 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
-
-[dependencies]
-winapi = { version = "0.3", features = ["winuser"] }
