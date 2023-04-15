@@ -6,12 +6,13 @@ members = [
     "qvopenapi-http",
 ]
 
-
-# https://github.com/rust-lang/rust/issues/79609
-# To bypass missing 'dwarf' exception handling on mingw i686 installations,
-# set panic = abort and provide mock unwind symbol to the linker
-[profile.dev]
-panic = "abort"
-
-[profile.release]
-panic = "abort"
+[workspace.dependencies]
+libc = "0.2"
+libloading = "0.8"
+windows-sys = {version = "0.48", features = [
+    "Win32_Foundation",
+    "Win32_Security",
+    "Win32_System_Threading",
+    "Win32_UI_WindowsAndMessaging",
+]}
+custom_error = "1.9.2"

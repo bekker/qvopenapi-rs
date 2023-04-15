@@ -25,18 +25,31 @@ rustup target add i686-pc-windows-gnu
 # Install mingw
 brew install mingw-w64
 
-# Install wine staging
-brew install --cask --no-quarantine homebrew/cask-versions/wine-staging
+# Install wine crossover
+brew tap gcenx/wine
+brew install --cask --no-quarantine wine-crossover
 
-# Build webserver example
-cargo build -p qvopenapi-http --release --target i686-pc-windows-gnu
+# Build webserver
+# https://github.com/rust-lang/rust/issues/79609
+# To bypass missing 'dwarf' exception handling on mingw i686 installations,
+# set panic = abort and provide mock unwind symbol to the linker
+cargo rustc -p qvopenapi-http --release --target i686-pc-windows-gnu --features "disable-unwind" -- -C "panic=abort"
 
-# Run using wine64
-wine64 target/i686-pc-windows-gnu/release/qvopenapi-http.exe
+# Run using wine
+wine target/i686-pc-windows-gnu/release/qvopenapi-http.exe
 ```
 
-## Recommended wine version
-- 8.4
+## Build & running on Windows
+```sh
+# Setup rust cross-compilation
+rustup target add i686-pc-windows-msvc
+
+# Build webserver
+cargo build -p qvopenapi-http --release --target i686-pc-windows-msvc
+
+# Run webserver
+cargo run -p qvopenapi-http --release --target i686-pc-windows-msvc
+```
 
 ## Download DLL
 - https://download.nhqv.com/download/iflgtrading/openapi.qv.zip

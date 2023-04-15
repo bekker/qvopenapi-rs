@@ -7,4 +7,8 @@ edition = "2021"
 
 [dependencies]
 qvopenapi-sys = { path = "../qvopenapi-sys" }
-winapi = { version = "0.3", features = ["winuser"] }
+custom_error = { workspace = true }
+libloading = { workspace = true }
+
+[features]
+disable-unwind = [ "qvopenapi-sys/disable-unwind" ]
