@@ -10,9 +10,13 @@ pub extern "stdcall" fn _Unwind_Resume() {}
 extern crate libloading;
 extern crate windows_sys;
 
-use libc::{c_int, c_char};
-#[cfg(unix)] use libloading::os::unix::Symbol as RawSymbol;
-#[cfg(windows)] use libloading::os::windows::Symbol as RawSymbol;
+use std::fmt;
+
+use libc::{c_char, c_int};
+#[cfg(unix)]
+use libloading::os::unix::Symbol as RawSymbol;
+#[cfg(windows)]
+use libloading::os::windows::Symbol as RawSymbol;
 use libloading::{Library, Symbol};
 use windows_sys::Win32::Foundation::*;
 
@@ -24,10 +28,19 @@ type DWORD = u32;
 type WmcaSetServer = extern "stdcall" fn(*const c_char) -> BOOL;
 type WmcaSetPort = extern "stdcall" fn(c_int) -> BOOL;
 type WmcaIsConnected = extern "stdcall" fn() -> BOOL;
-type WmcaConnect = extern "stdcall" fn(HWND, DWORD, c_char, c_char, *const c_char, *const c_char, *const c_char) -> BOOL;
+type WmcaConnect = extern "stdcall" fn(
+    HWND,
+    DWORD,
+    c_char,
+    c_char,
+    *const c_char,
+    *const c_char,
+    *const c_char,
+) -> BOOL;
 type WmcaDisconnect = extern "stdcall" fn() -> BOOL;
 //type WmcaTransact = extern "stdcall" fn(HWND, c_int, *const c_char, *const c_char, c_int, c_int, c_int) -> BOOL;
-type WmcaQuery = extern "stdcall" fn(HWND, c_int, *const c_char, *const c_char, c_int, c_int) -> BOOL;
+type WmcaQuery =
+    extern "stdcall" fn(HWND, c_int, *const c_char, *const c_char, c_int, c_int) -> BOOL;
 //type WmcaRequest = extern "stdcall" fn(HWND, c_int, *const c_char, *const c_char, c_int, *const c_char) -> BOOL;
 type WmcaAttach = extern "stdcall" fn(HWND, *const c_char, *const c_char, c_int, c_int) -> BOOL;
 type WmcaDetach = extern "stdcall" fn(HWND, *const c_char, *const c_char, c_int, c_int) -> BOOL;
@@ -64,6 +77,12 @@ pub struct WmcaLib {
     //pub set_account_no_by_index: RawSymbol<WmcaSetAccountNoByIndex>,
 }
 
+impl fmt::Debug for WmcaLib {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "WmcaLib")
+    }
+}
+
 pub fn load_lib() -> Result<WmcaLib, libloading::Error> {
     unsafe {
         let library = Library::new("wmca.dll")?;
@@ -97,7 +116,8 @@ pub fn load_lib() -> Result<WmcaLib, libloading::Error> {
         let detach_all = detach_all.into_raw();
         //let set_option: Symbol<WmcaSetOption> = library.get(b"wmcaSetOption")?;
         //let set_option = set_option.into_raw();
-        let set_account_index_pwd: Symbol<WmcaSetAccountIndexPwd> = library.get(b"wmcaSetAccountIndexPwd")?;
+        let set_account_index_pwd: Symbol<WmcaSetAccountIndexPwd> =
+            library.get(b"wmcaSetAccountIndexPwd")?;
         let set_account_index_pwd = set_account_index_pwd.into_raw();
         let set_order_pwd: Symbol<WmcaSetOrderPwd> = library.get(b"wmcaSetOrderPwd")?;
         let set_order_pwd = set_order_pwd.into_raw();
