@@ -21,8 +21,8 @@ type DWORD = u32;
 
 //type WmcaLoad = extern "stdcall" fn() -> BOOL;
 //type WmcaFree = extern "stdcall" fn() -> BOOL;
-//type WmcaSetServer = extern "stdcall" fn(*const c_char) -> BOOL;
-//type WmcaSetPort = extern "stdcall" fn(c_int) -> BOOL;
+type WmcaSetServer = extern "stdcall" fn(*const c_char) -> BOOL;
+type WmcaSetPort = extern "stdcall" fn(c_int) -> BOOL;
 type WmcaIsConnected = extern "stdcall" fn() -> BOOL;
 type WmcaConnect = extern "stdcall" fn(HWND, DWORD, c_char, c_char, *const c_char, *const c_char, *const c_char) -> BOOL;
 type WmcaDisconnect = extern "stdcall" fn() -> BOOL;
@@ -41,10 +41,11 @@ type WmcaSetOrderPwd = extern "stdcall" fn(*const c_char, *const c_char) -> BOOL
 //type WmcaSetAccountNoByIndex = extern "stdcall" fn(*const c_char, c_int) -> BOOL;
 
 pub struct WmcaLib {
+    pub library: Library,
     //pub load: RawSymbol<WmcaLoad>,
     //pub free: RawSymbol<WmcaFree>,
-    //pub set_server: RawSymbol<WmcaSetServer>,
-    //pub set_port: RawSymbol<WmcaSetPort>,
+    pub set_server: RawSymbol<WmcaSetServer>,
+    pub set_port: RawSymbol<WmcaSetPort>,
     pub is_connected: RawSymbol<WmcaIsConnected>,
     pub connect: RawSymbol<WmcaConnect>,
     pub disconnect: RawSymbol<WmcaDisconnect>,
@@ -70,10 +71,10 @@ pub fn load_lib() -> Result<WmcaLib, libloading::Error> {
         //let load = load.into_raw();
         //let free: Symbol<WmcaFree> = library.get(b"wmcaFree")?;
         //let free = free.into_raw();
-        //let set_server: Symbol<WmcaSetServer> = library.get(b"wmcaSetServer")?;
-        //let set_server = set_server.into_raw();
-        //let set_port: Symbol<WmcaSetPort> = library.get(b"wmcaSetPort")?;
-        //let set_port = set_port.into_raw();
+        let set_server: Symbol<WmcaSetServer> = library.get(b"wmcaSetServer")?;
+        let set_server = set_server.into_raw();
+        let set_port: Symbol<WmcaSetPort> = library.get(b"wmcaSetPort")?;
+        let set_port = set_port.into_raw();
         let is_connected: Symbol<WmcaIsConnected> = library.get(b"wmcaIsConnected")?;
         let is_connected = is_connected.into_raw();
         let connect: Symbol<WmcaConnect> = library.get(b"wmcaConnect")?;
@@ -107,10 +108,11 @@ pub fn load_lib() -> Result<WmcaLib, libloading::Error> {
         //let set_account_no_by_index: Symbol<WmcaSetAccountNoByIndex> = library.get(b"wmcaSetAccountNoByIndex")?;
         //let set_account_no_by_index = set_account_no_by_index.into_raw();
         Ok(WmcaLib {
+            library,
             //load,
             //free,
-            //set_server,
-            //set_port,
+            set_server,
+            set_port,
             is_connected,
             connect,
             disconnect,
