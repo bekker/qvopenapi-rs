@@ -173,8 +173,10 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
     }
 }
 
+// Somehow DrawTextW wants mutable string (though it doesn't seem need one)
+// So I made one for it
 lazy_static! {
-    static ref DRAW_TEXT: Mutex<Vec<u16>> = Mutex::new(
+    static ref DRAW_TEXT_MUT: Mutex<Vec<u16>> = Mutex::new(
         String::from("qvopenapi")
             .encode_utf16()
             .collect::<Vec<u16>>()
@@ -188,7 +190,7 @@ unsafe fn draw(hwnd: HWND) {
     GetClientRect(hwnd, &mut rc);
     DrawTextW(
         dc,
-        DRAW_TEXT.lock().unwrap().as_mut(),
+        DRAW_TEXT_MUT.lock().unwrap().as_mut(),
         &mut rc,
         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
     );

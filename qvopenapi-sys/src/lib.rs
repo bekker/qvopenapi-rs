@@ -83,7 +83,7 @@ impl fmt::Debug for WmcaLib {
     }
 }
 
-pub fn load_lib() -> Result<WmcaLib, libloading::Error> {
+pub fn bind_lib() -> Result<WmcaLib, libloading::Error> {
     unsafe {
         let library = Library::new("wmca.dll")?;
         //let load: Symbol<WmcaLoad> = library.get(b"wmcaLoad")?;
