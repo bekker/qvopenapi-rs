@@ -40,7 +40,7 @@ RUN curl -O https://download.nhqv.com/download/iflgtrading/openapi.qv.zip && \
 FROM rust:1.69.0-buster AS builder
 
 RUN apt-get update
-RUN apt-get install -y gcc-mingw-w64-x86-64 g++-mingw-w64-x86-64
+RUN apt-get install -y gcc-mingw-w64-i686
 
 ENV RUST_TARGET="i686-pc-windows-gnu"
 RUN rustup target add ${RUST_TARGET}
