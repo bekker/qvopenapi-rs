@@ -6,6 +6,8 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+env_logger = "0.10.0"
+log = "0.4.17"
 qvopenapi = { path = "../qvopenapi" }
 
 [features]

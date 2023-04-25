@@ -7,11 +7,23 @@ use windows::{
     core::*, Win32::Foundation::*, Win32::Graphics::Gdi::*,
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
+use log::*;
 
 use crate::QvOpenApiError;
 
+pub const CA_WMCAEVENT: u32 = 0x7000;
+
+pub const CA_CONNECTED: u32 = WM_USER + 110;
+pub const CA_DISCONNECTED: u32 = WM_USER + 120;
+pub const CA_SOCKETERROR: u32 = WM_USER + 130;
+pub const CA_RECEIVEDATA: u32 = WM_USER + 210;
+pub const CA_RECEIVESISE: u32 = WM_USER + 220;
+pub const CA_RECEIVEMESSAGE: u32 = WM_USER + 230;
+pub const CA_RECEIVECOMPLETE: u32 = WM_USER + 240;
+pub const CA_RECEIVEERROR: u32 = WM_USER + 250;
+
 pub struct WindowManager {
-    pub hwnd: Option<HWND>,
+    pub hwnd: Option<isize>,
     pub status: WindowManagerStatus,
     pub thread: Option<JoinHandle<std::result::Result<(), QvOpenApiError>>>,
 }
@@ -27,9 +39,9 @@ pub enum WindowManagerStatus {
 impl Drop for WindowManager {
     fn drop(&mut self) {
         if self.hwnd.is_some() && self.status != WindowManagerStatus::DESTROYED {
-            println!("Destroying window...");
+            info!("Destroying window...");
             unsafe {
-                DestroyWindow(self.hwnd.unwrap());
+                DestroyWindow(HWND{0: self.hwnd.unwrap()});
             }
         }
         self.thread.take().map(JoinHandle::join);
@@ -53,29 +65,29 @@ pub fn run_window(
         let mut manager = manager_lock.write().unwrap();
         manager.thread = Some(std::thread::spawn(|| {
             {
-                println!("Window creating...");
+                info!("Window creating...");
                 let mut manager = manager_lock.write().unwrap();
                 if manager.status != WindowManagerStatus::INIT {
-                    println!("WindowManagerStatus is not INIT");
+                    info!("WindowManagerStatus is not INIT");
                     return Err(QvOpenApiError::WindowCreationError);
                 }
                 let create_result = create_window();
 
                 if create_result.is_err() {
                     manager.status = WindowManagerStatus::ERROR;
-                    println!("WindowManagerStatus is ERROR");
+                    info!("WindowManagerStatus is ERROR");
                     return Err(QvOpenApiError::WindowCreationError);
                 }
 
-                manager.hwnd = Some(create_result.unwrap());
+                manager.hwnd = Some(create_result.unwrap().0);
                 manager.status = WindowManagerStatus::CREATED;
-                println!("Window created");
+                info!("Window created (hwnd: {})", manager.hwnd.unwrap());
             }
             loop_message();
             {
                 let mut manager = manager_lock.write().unwrap();
                 manager.status = WindowManagerStatus::DESTROYED;
-                println!("Window destroyed");
+                info!("Window destroyed");
             }
             Ok(())
         }));
@@ -88,7 +100,7 @@ pub fn run_window(
     if manager_lock.read().unwrap().status == WindowManagerStatus::CREATED {
         return Ok(());
     } else {
-        println!("WindowManagerStatus is not CREATED");
+        info!("WindowManagerStatus is not CREATED");
         return Err(QvOpenApiError::WindowCreationError);
     }
 }
@@ -147,7 +159,7 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
     unsafe {
         match message {
             WM_PAINT => {
-                println!("WM_PAINT");
+                info!("WM_PAINT");
                 draw(hwnd);
                 LRESULT(0)
             }
@@ -164,12 +176,36 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                 LRESULT(0)
             }
             WM_DESTROY => {
-                println!("WM_DESTROY");
+                info!("WM_DESTROY");
                 PostQuitMessage(0);
                 LRESULT(0)
             }
+            CA_WMCAEVENT => {
+                info!("CA_WMCAEVENT {}", wparam.0);
+                match on_wmca_event(wparam, lparam) {
+                    Ok(()) => LRESULT(0),
+                    Err(e) => {
+                        error!("QvOpenApiError: {}", e);
+                        LRESULT(0)
+                    }
+                }
+            }
             _ => DefWindowProcA(hwnd, message, wparam, lparam),
         }
+    }
+}
+
+fn on_wmca_event(message_type: WPARAM, lparam: LPARAM) -> std::result::Result<(), QvOpenApiError> {
+    match u32::try_from(message_type.0).unwrap() {
+        CA_CONNECTED => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_CONNECTED") }),
+        CA_DISCONNECTED => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_DISCONNECTED") }),
+        CA_SOCKETERROR => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_SOCKETERROR") }),
+        CA_RECEIVEDATA => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_RECEIVEDATA") }),
+        CA_RECEIVESISE => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_RECEIVESISE") }),
+        CA_RECEIVEMESSAGE => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_RECEIVEMESSAGE") }),
+        CA_RECEIVECOMPLETE => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_RECEIVECOMPLETE") }),
+        CA_RECEIVEERROR => Err(QvOpenApiError::EventUnimplementedError { event: String::from("CA_RECEIVEERROR") }),
+        _ => Err(QvOpenApiError::WindowUnknownEventError { wparam: message_type.0 })
     }
 }
 

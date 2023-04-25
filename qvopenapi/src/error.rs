@@ -8,6 +8,9 @@ custom_error! {pub QvOpenApiError
     WmcaDllLoadingError = "Failed to load wmca.dll",
     WindowCreationError = "Failed to create a window",
     WindowNotCreatedError = "Window not created",
+    WindowUnknownEventError{ wparam: usize } = "Unknown event {wparam}",
+    EventUnimplementedError{ event: String } = "Unimplemented event {event}",
+    ReturnCodeError{ code: i32 } = "Return code {code}",
 }
 
 impl From<libloading::Error> for QvOpenApiError {
