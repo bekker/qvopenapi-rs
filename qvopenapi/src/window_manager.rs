@@ -47,45 +47,45 @@ impl WindowManager {
 }
 
 pub fn run_window(
-    manager: &'static RwLock<WindowManager>,
+    manager_lock: &'static RwLock<WindowManager>,
 ) -> std::result::Result<(), QvOpenApiError> {
     {
-        let mut writer = manager.write().unwrap();
-        (*writer).thread = Some(std::thread::spawn(|| {
+        let mut manager = manager_lock.write().unwrap();
+        manager.thread = Some(std::thread::spawn(|| {
             {
                 println!("Window creating...");
-                let mut writer = manager.write().unwrap();
-                if (*writer).status != WindowManagerStatus::INIT {
+                let mut manager = manager_lock.write().unwrap();
+                if manager.status != WindowManagerStatus::INIT {
                     println!("WindowManagerStatus is not INIT");
                     return Err(QvOpenApiError::WindowCreationError);
                 }
                 let create_result = create_window();
 
                 if create_result.is_err() {
-                    (*writer).status = WindowManagerStatus::ERROR;
+                    manager.status = WindowManagerStatus::ERROR;
                     println!("WindowManagerStatus is ERROR");
                     return Err(QvOpenApiError::WindowCreationError);
                 }
 
-                (*writer).hwnd = Some(create_result.unwrap());
-                (*writer).status = WindowManagerStatus::CREATED;
+                manager.hwnd = Some(create_result.unwrap());
+                manager.status = WindowManagerStatus::CREATED;
                 println!("Window created");
             }
             loop_message();
             {
-                let mut writer = manager.write().unwrap();
-                (*writer).status = WindowManagerStatus::DESTROYED;
+                let mut manager = manager_lock.write().unwrap();
+                manager.status = WindowManagerStatus::DESTROYED;
                 println!("Window destroyed");
             }
             Ok(())
         }));
     }
 
-    while manager.read().unwrap().status == WindowManagerStatus::INIT {
+    while manager_lock.read().unwrap().status == WindowManagerStatus::INIT {
         std::thread::sleep(Duration::from_millis(10))
     }
 
-    if manager.read().unwrap().status == WindowManagerStatus::CREATED {
+    if manager_lock.read().unwrap().status == WindowManagerStatus::CREATED {
         return Ok(());
     } else {
         println!("WindowManagerStatus is not CREATED");
