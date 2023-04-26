@@ -13,7 +13,7 @@ use std::{ffi::CString, os::raw::c_char, sync::RwLock, time::Duration};
 use window_manager::WindowManager;
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
-    UI::WindowsAndMessaging::SendMessageA,
+    UI::WindowsAndMessaging::{SendMessageA, PostMessageA},
 };
 
 // Static mutables need wrappers like OnceCell or RwLock to prevent concurrency problem
@@ -41,9 +41,16 @@ pub fn is_connected() -> Result<bool, QvOpenApiError> {
     Ok(ret != 0)
 }
 
-fn send_message(msg: u32, wparam: usize, lparam: isize) -> Result<(), QvOpenApiError> {
+pub fn send_message(msg: u32, wparam: usize, lparam: isize) -> Result<(), QvOpenApiError> {
     unsafe {
         SendMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
+    }
+    return Ok(());
+}
+
+pub fn post_message(msg: u32, wparam: usize, lparam: isize) -> Result<(), QvOpenApiError> {
+    unsafe {
+        PostMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
     }
     return Ok(());
 }

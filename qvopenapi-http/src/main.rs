@@ -12,6 +12,7 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     info!("is_connected : {}", qvopenapi::is_connected()?);
     std::thread::sleep(Duration::from_millis(100));
     qvopenapi::connect(AccountType::NAMUH, "id", "password", "cert_pw")?;
+    qvopenapi::post_message(1234, 1234, 1234)?;
     info!("is_connected : {}", qvopenapi::is_connected()?);
     std::thread::sleep(Duration::from_millis(100));
     qvopenapi::connect(AccountType::NAMUH, "id2", "password", "cert_pw")?;
