@@ -6,11 +6,15 @@ mod window_manager;
 
 pub use error::*;
 
-use qvopenapi_sys::WmcaLib;
-use once_cell::sync::OnceCell;
-use std::{sync::RwLock, os::raw::c_char, ffi::{CString}};
-use window_manager::WindowManager;
 use log::*;
+use once_cell::sync::OnceCell;
+use qvopenapi_sys::WmcaLib;
+use std::{ffi::CString, os::raw::c_char, sync::RwLock, time::Duration};
+use window_manager::WindowManager;
+use windows::Win32::{
+    Foundation::{HWND, LPARAM, WPARAM},
+    UI::WindowsAndMessaging::SendMessageA,
+};
 
 // Static mutables need wrappers like OnceCell or RwLock to prevent concurrency problem
 static WMCA_LIB_CELL: OnceCell<WmcaLib> = OnceCell::new();
@@ -32,12 +36,26 @@ pub fn init() -> Result<(), QvOpenApiError> {
 }
 
 pub fn is_connected() -> Result<bool, QvOpenApiError> {
-    Ok((get_lib()?.is_connected)() != 0)
+    let ret = (get_lib()?.is_connected)();
+    debug!("is_connected {}", ret);
+    Ok(ret != 0)
 }
 
-pub fn connect(account_type: AccountType, id: &str, password: &str, cert_password: &str) -> Result<(), QvOpenApiError> {
+fn send_message(msg: u32, wparam: usize, lparam: isize) -> Result<(), QvOpenApiError> {
+    unsafe {
+        SendMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
+    }
+    return Ok(());
+}
+
+pub fn connect(
+    account_type: AccountType,
+    id: &str,
+    password: &str,
+    cert_password: &str,
+) -> Result<(), QvOpenApiError> {
     let hwnd = get_hwnd()?;
-    let msg = window_manager::CA_WMCAEVENT;
+    let msg = window_manager::WM_WMCAEVENT;
     let media_type = match account_type {
         AccountType::QV => 'P',
         AccountType::NAMUH => 'T',
@@ -47,29 +65,53 @@ pub fn connect(account_type: AccountType, id: &str, password: &str, cert_passwor
         AccountType::NAMUH => 'W',
     } as c_char;
 
-    debug!("connect ({}, {}, {}, \"{}\", **, **)", hwnd, msg, account_type, id);
+    debug!(
+        "connect ({}, {}, {}, {}, \"{}\", **, **)",
+        hwnd, msg, media_type, user_type, id
+    );
+
+    let id_cstr = make_c_string(id);
+    let password_cstr = make_c_string(password);
+    let cert_password_cstr = make_c_string(cert_password);
 
     c_bool_to_result((get_lib()?.connect)(
         hwnd,
         msg,
         media_type,
         user_type,
-        empty_if_null(id).as_ptr(),
-        empty_if_null(password).as_ptr(),
-        empty_if_null(cert_password).as_ptr(),
+        id_cstr.as_ptr(),
+        password_cstr.as_ptr(),
+        cert_password_cstr.as_ptr(),
+    ))
+}
+
+pub fn query(tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
+    let hwnd = get_hwnd()?;
+    let tr_id: i32 = 0;
+    let tr_code_cstr = make_c_string(tr_code);
+    let input_cstr = make_c_string(input);
+
+    c_bool_to_result((get_lib()?.query)(
+        hwnd,
+        tr_id,
+        tr_code_cstr.as_ptr(),
+        input_cstr.as_ptr(),
+        input.len() as i32,
+        account_index,
     ))
 }
 
 fn c_bool_to_result(val: i32) -> Result<(), QvOpenApiError> {
-    debug!("return {}", val);
+    debug!("c_bool_to_result {}", val);
     match val {
-        0 => Err(QvOpenApiError::ReturnCodeError{code: val}),
+        // FIXME
+        //0 => Err(QvOpenApiError::ReturnCodeError{code: val}),
         _ => Ok(()),
     }
 }
 
-fn empty_if_null(original: &str) -> CString {
-    CString::new(original).unwrap_or(CString::new("").unwrap())
+fn make_c_string(original: &str) -> CString {
+    CString::new(original).unwrap()
 }
 
 fn bind_lib() -> Result<(), QvOpenApiError> {
