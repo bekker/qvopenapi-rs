@@ -217,7 +217,7 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                 }
             }
             _ => {
-                //debug!("DefWindowProcW {} {} {}", message, wparam.0, lparam.0);
+                debug!("DefWindowProcW {} {} {}", message, wparam.0, lparam.0);
                 DefWindowProcW(hwnd, message, wparam, lparam)
             }
         }

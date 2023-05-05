@@ -5,7 +5,7 @@ use log::*;
 use once_cell::sync::OnceCell;
 use qvopenapi_sys::WmcaLib;
 use std::{ffi::CString, os::raw::c_char};
-use window_manager::{get_hwnd, WINDOW_MANAGER_LOCK};
+use window_mgr::{get_hwnd, WINDOW_MANAGER_LOCK};
 
 // Static mutables need wrappers like OnceCell or RwLock to prevent concurrency problem
 static WMCA_LIB_CELL: OnceCell<WmcaLib> = OnceCell::new();
@@ -15,7 +15,7 @@ static WMCA_LIB_CELL: OnceCell<WmcaLib> = OnceCell::new();
  */
 pub fn init() -> Result<(), QvOpenApiError> {
     bind_lib()?;
-    window_manager::run_window_async(&WINDOW_MANAGER_LOCK)?;
+    window_mgr::run_window_async(&WINDOW_MANAGER_LOCK)?;
     Ok(())
 }
 
@@ -37,7 +37,7 @@ pub fn connect(
     cert_password: &str,
 ) -> Result<(), QvOpenApiError> {
     let hwnd = get_hwnd()?;
-    let msg = window_manager::WM_WMCAEVENT;
+    let msg = window_mgr::WM_WMCAEVENT;
     let media_type = match account_type {
         AccountType::QV => 'P',
         AccountType::NAMUH => 'T',

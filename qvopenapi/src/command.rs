@@ -16,7 +16,7 @@ pub struct ConnectCommand {
 
 impl WmcaCommand for ConnectCommand {
     fn execute(&self) -> Result<(), QvOpenApiError> {
-        wmcalib::connect(
+        wmca_lib::connect(
             self.account_type,
             &self.id,
             &self.password,
@@ -33,7 +33,7 @@ pub struct QueryCommand {
 
 impl WmcaCommand for QueryCommand {
     fn execute(&self) -> Result<(), QvOpenApiError> {
-        wmcalib::query(&self.tr_code, &self.input, self.account_index)
+        wmca_lib::query(&self.tr_code, &self.input, self.account_index)
     }
 }
 
@@ -44,9 +44,9 @@ pub trait WmcaCommand {
 pub fn post_command(cmd: Box<dyn WmcaCommand + Send + Sync>) -> Result<(), QvOpenApiError> {
     let mut cmd_queue = CURRENT_COMMAND_QUEUE_LOCK.write().unwrap();
     cmd_queue.push_back(cmd);
-    window_manager::post_message(
-        window_manager::WM_CUSTOMEVENT,
-        window_manager::CA_COMMAND.try_into().unwrap(),
+    window_mgr::post_message(
+        window_mgr::WM_CUSTOMEVENT,
+        window_mgr::CA_COMMAND.try_into().unwrap(),
         0,
     )
 }

@@ -3,12 +3,12 @@ extern crate qvopenapi_sys;
 extern crate lazy_static;
 mod command;
 mod error;
-mod window_manager;
-mod wmcalib;
+mod window_mgr;
+mod wmca_lib;
 
 pub use error::*;
 
-pub use wmcalib::{init, is_connected};
+pub use wmca_lib::{init, is_connected};
 
 #[derive(strum_macros::Display, Clone, Copy)]
 pub enum AccountType {
