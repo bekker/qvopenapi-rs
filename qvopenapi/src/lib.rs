@@ -9,7 +9,7 @@ pub use error::*;
 use log::*;
 use once_cell::sync::OnceCell;
 use qvopenapi_sys::WmcaLib;
-use std::{ffi::CString, os::raw::c_char, sync::RwLock, time::Duration};
+use std::{ffi::CString, os::raw::c_char, sync::RwLock};
 use window_manager::WindowManager;
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
@@ -53,6 +53,13 @@ pub fn post_message(msg: u32, wparam: usize, lparam: isize) -> Result<(), QvOpen
         PostMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
     }
     return Ok(());
+}
+
+pub fn set_server(
+    server: &str,
+) -> Result<(), QvOpenApiError> {
+    let server_cstr = make_c_string(server);
+    c_bool_to_result((get_lib()?.set_server)(server_cstr.as_ptr()))
 }
 
 pub fn connect(

@@ -154,7 +154,7 @@ pub fn create_window() -> windows::core::Result<HWND> {
 pub fn loop_message(hwnd: isize) {
     unsafe {
         let mut message = MSG::default();
-        while GetMessageW(&mut message, None, 0, 0).into() {
+        while GetMessageW(&mut message, HWND(hwnd), 0, 0).into() {
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }
