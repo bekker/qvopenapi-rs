@@ -1,16 +1,14 @@
 extern crate qvopenapi_sys;
 #[macro_use]
 extern crate lazy_static;
+mod command;
 mod error;
 mod window_manager;
 mod wmcalib;
-mod command;
 
 pub use error::*;
 
-pub use wmcalib::{
-    init, is_connected
-};
+pub use wmcalib::{init, is_connected};
 
 #[derive(strum_macros::Display, Clone, Copy)]
 pub enum AccountType {
@@ -24,7 +22,7 @@ pub fn connect(
     password: &str,
     cert_password: &str,
 ) -> Result<(), QvOpenApiError> {
-    let cmd = command::ConnectCommand{
+    let cmd = command::ConnectCommand {
         account_type: account_type,
         id: id.to_string(),
         password: password.to_string(),
@@ -34,7 +32,7 @@ pub fn connect(
 }
 
 pub fn query(tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
-    let cmd = command::QueryCommand{
+    let cmd = command::QueryCommand {
         tr_code: tr_code.to_string(),
         input: input.to_string(),
         account_index: account_index,

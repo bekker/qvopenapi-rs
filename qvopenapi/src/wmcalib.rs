@@ -1,15 +1,11 @@
-use crate::*;
 use crate::error::*;
+use crate::*;
 
 use log::*;
 use once_cell::sync::OnceCell;
 use qvopenapi_sys::WmcaLib;
-use std::{ffi::CString, os::raw::c_char, sync::RwLock};
-use window_manager::{WindowManager, WINDOW_MANAGER_LOCK, get_hwnd};
-use windows::Win32::{
-    Foundation::{HWND, LPARAM, WPARAM},
-    UI::WindowsAndMessaging::{SendMessageA, PostMessageA},
-};
+use std::{ffi::CString, os::raw::c_char};
+use window_manager::{get_hwnd, WINDOW_MANAGER_LOCK};
 
 // Static mutables need wrappers like OnceCell or RwLock to prevent concurrency problem
 static WMCA_LIB_CELL: OnceCell<WmcaLib> = OnceCell::new();
@@ -29,9 +25,7 @@ pub fn is_connected() -> Result<bool, QvOpenApiError> {
     Ok(ret != 0)
 }
 
-pub fn set_server(
-    server: &str,
-) -> Result<(), QvOpenApiError> {
+pub fn set_server(server: &str) -> Result<(), QvOpenApiError> {
     let server_cstr = make_c_string(server);
     c_bool_to_result((get_lib()?.set_server)(server_cstr.as_ptr()))
 }
@@ -111,7 +105,7 @@ fn bind_lib() -> Result<(), QvOpenApiError> {
 
 fn get_lib() -> Result<&'static WmcaLib, QvOpenApiError> {
     match WMCA_LIB_CELL.get() {
-        Some(ref wmca_lib) => Ok(wmca_lib),
+        Some(wmca_lib) => Ok(wmca_lib),
         None => Err(QvOpenApiError::WmcaDllNotLoadedError),
     }
 }

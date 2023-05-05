@@ -1,9 +1,10 @@
-use std::{sync::RwLock, collections::VecDeque};
+use std::{collections::VecDeque, sync::RwLock};
 
 use crate::*;
 
 lazy_static! {
-    static ref CURRENT_COMMAND_QUEUE_LOCK: RwLock<VecDeque<Box<dyn WmcaCommand + Send + Sync>>> = RwLock::new(VecDeque::new());
+    static ref CURRENT_COMMAND_QUEUE_LOCK: RwLock<VecDeque<Box<dyn WmcaCommand + Send + Sync>>> =
+        RwLock::new(VecDeque::new());
 }
 
 pub struct ConnectCommand {
@@ -15,7 +16,12 @@ pub struct ConnectCommand {
 
 impl WmcaCommand for ConnectCommand {
     fn execute(&self) -> Result<(), QvOpenApiError> {
-        wmcalib::connect(self.account_type, &self.id, &self.password, &self.cert_password)
+        wmcalib::connect(
+            self.account_type,
+            &self.id,
+            &self.password,
+            &self.cert_password,
+        )
     }
 }
 
@@ -41,7 +47,8 @@ pub fn post_command(cmd: Box<dyn WmcaCommand + Send + Sync>) -> Result<(), QvOpe
     window_manager::post_message(
         window_manager::WM_CUSTOMEVENT,
         window_manager::CA_COMMAND.try_into().unwrap(),
-        0)
+        0,
+    )
 }
 
 pub fn execute_command() -> Result<(), QvOpenApiError> {
@@ -49,7 +56,7 @@ pub fn execute_command() -> Result<(), QvOpenApiError> {
     let cmd = cmd_queue.pop_front();
 
     if cmd.is_none() {
-        return Ok(())
+        return Ok(());
     }
 
     cmd.unwrap().execute()

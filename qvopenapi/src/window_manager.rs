@@ -38,15 +38,15 @@ pub struct WindowManager {
 
 #[derive(PartialEq, Eq)]
 pub enum WindowManagerStatus {
-    INIT,
-    CREATED,
-    DESTROYED,
-    ERROR,
+    Init,
+    Created,
+    Destroyed,
+    Error,
 }
 
 impl Drop for WindowManager {
     fn drop(&mut self) {
-        if self.hwnd.is_some() && self.status != WindowManagerStatus::DESTROYED {
+        if self.hwnd.is_some() && self.status != WindowManagerStatus::Destroyed {
             info!("Destroying window...");
             unsafe {
                 DestroyWindow(HWND(self.hwnd.unwrap()));
@@ -60,7 +60,7 @@ impl WindowManager {
     pub const fn new() -> Self {
         WindowManager {
             hwnd: None,
-            status: WindowManagerStatus::INIT,
+            status: WindowManagerStatus::Init,
             thread: None,
         }
     }
@@ -71,52 +71,49 @@ pub fn run_window_async(
 ) -> std::result::Result<(), QvOpenApiError> {
     {
         let mut manager = manager_lock.write().unwrap();
-        manager.thread = Some(std::thread::spawn(move || {
-            run_window_sync(&manager_lock)
-        }));
+        manager.thread = Some(std::thread::spawn(move || run_window_sync(manager_lock)));
     }
 
-    while manager_lock.read().unwrap().status == WindowManagerStatus::INIT {
+    while manager_lock.read().unwrap().status == WindowManagerStatus::Init {
         std::thread::sleep(Duration::from_millis(10))
     }
 
-    if manager_lock.read().unwrap().status == WindowManagerStatus::CREATED {
-        return Ok(());
+    if manager_lock.read().unwrap().status == WindowManagerStatus::Created {
+        Ok(())
     } else {
         info!("WindowManagerStatus is not CREATED");
-        return Err(QvOpenApiError::WindowCreationError);
+        Err(QvOpenApiError::WindowCreationError)
     }
 }
 
 pub fn run_window_sync(
     manager_lock: &'static RwLock<WindowManager>,
 ) -> std::result::Result<(), QvOpenApiError> {
-
     let hwnd;
     {
         info!("Window creating...");
         let mut manager = manager_lock.write().unwrap();
-        if manager.status != WindowManagerStatus::INIT {
+        if manager.status != WindowManagerStatus::Init {
             info!("WindowManagerStatus is not INIT");
             return Err(QvOpenApiError::WindowCreationError);
         }
         let create_result = create_window();
 
         if create_result.is_err() {
-            manager.status = WindowManagerStatus::ERROR;
+            manager.status = WindowManagerStatus::Error;
             info!("WindowManagerStatus is ERROR");
             return Err(QvOpenApiError::WindowCreationError);
         }
 
         hwnd = create_result.unwrap().0;
         manager.hwnd = Some(hwnd);
-        manager.status = WindowManagerStatus::CREATED;
+        manager.status = WindowManagerStatus::Created;
         info!("Window created (hwnd: {})", manager.hwnd.unwrap());
     }
     loop_message(hwnd);
     {
         let mut manager = manager_lock.write().unwrap();
-        manager.status = WindowManagerStatus::DESTROYED;
+        manager.status = WindowManagerStatus::Destroyed;
         info!("Window destroyed");
     }
     Ok(())
@@ -259,9 +256,7 @@ fn on_wmca_event(message_type: usize, lparam: isize) -> std::result::Result<(), 
 
 fn on_custom_event(message_type: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
     match u32::try_from(message_type).unwrap() {
-        CA_COMMAND => {
-            command::execute_command()
-        },
+        CA_COMMAND => command::execute_command(),
         _ => Err(QvOpenApiError::WindowUnknownEventError {
             wparam: message_type,
         }),
@@ -359,16 +354,24 @@ pub fn get_hwnd() -> std::result::Result<isize, QvOpenApiError> {
     }
 }
 
-pub fn send_message(msg: u32, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+pub fn send_message(
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> std::result::Result<(), QvOpenApiError> {
     unsafe {
         SendMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
     }
-    return Ok(());
+    Ok(())
 }
 
-pub fn post_message(msg: u32, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+pub fn post_message(
+    msg: u32,
+    wparam: usize,
+    lparam: isize,
+) -> std::result::Result<(), QvOpenApiError> {
     unsafe {
         PostMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
     }
-    return Ok(());
+    Ok(())
 }
