@@ -73,6 +73,8 @@ pub fn query(tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpe
     let tr_code_cstr = make_c_string(tr_code);
     let input_cstr = make_c_string(input);
 
+    debug!("query ({})", tr_code);
+
     c_bool_to_result((get_lib()?.query)(
         hwnd,
         tr_id,

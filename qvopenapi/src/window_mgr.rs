@@ -110,7 +110,7 @@ pub fn run_window_sync(
         manager.status = WindowManagerStatus::Created;
         info!("Window created (hwnd: {})", manager.hwnd.unwrap());
     }
-    loop_message(hwnd);
+    loop_message();
     {
         let mut manager = manager_lock.write().unwrap();
         manager.status = WindowManagerStatus::Destroyed;
@@ -153,6 +153,7 @@ pub fn create_window() -> windows::core::Result<HWND> {
             instance,
             None,
         );
+
         Ok(hwnd)
     }
 }
@@ -160,10 +161,10 @@ pub fn create_window() -> windows::core::Result<HWND> {
 /**
  * Must be called from the same thread as create_window()
  */
-pub fn loop_message(hwnd: isize) {
+pub fn loop_message() {
     unsafe {
         let mut message = MSG::default();
-        while GetMessageW(&mut message, HWND(hwnd), 0, 0).0 == 1 {
+        while GetMessageW(&mut message, None, 0, 0).0 == 1 {
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }
@@ -217,7 +218,7 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                 }
             }
             _ => {
-                debug!("DefWindowProcW {} {} {}", message, wparam.0, lparam.0);
+                //debug!("DefWindowProcW {} {} {}", message, wparam.0, lparam.0);
                 DefWindowProcW(hwnd, message, wparam, lparam)
             }
         }
