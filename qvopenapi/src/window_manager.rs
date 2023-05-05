@@ -11,7 +11,7 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
 
-use crate::QvOpenApiError;
+use crate::*;
 
 pub const WM_WMCAEVENT: u32 = WM_USER + 8400;
 
@@ -23,6 +23,12 @@ pub const CA_RECEIVESISE: u32 = WM_USER + 220;
 pub const CA_RECEIVEMESSAGE: u32 = WM_USER + 230;
 pub const CA_RECEIVECOMPLETE: u32 = WM_USER + 240;
 pub const CA_RECEIVEERROR: u32 = WM_USER + 250;
+
+pub const WM_CUSTOMEVENT: u32 = WM_USER + 8410;
+
+pub const CA_COMMAND: u32 = WM_USER + 110;
+
+pub static WINDOW_MANAGER_LOCK: RwLock<WindowManager> = RwLock::new(WindowManager::new());
 
 pub struct WindowManager {
     pub hwnd: Option<isize>,
@@ -60,41 +66,13 @@ impl WindowManager {
     }
 }
 
-pub fn run_window(
+pub fn run_window_async(
     manager_lock: &'static RwLock<WindowManager>,
 ) -> std::result::Result<(), QvOpenApiError> {
     {
         let mut manager = manager_lock.write().unwrap();
-        manager.thread = Some(std::thread::spawn(|| {
-            let hwnd;
-
-            {
-                info!("Window creating...");
-                let mut manager = manager_lock.write().unwrap();
-                if manager.status != WindowManagerStatus::INIT {
-                    info!("WindowManagerStatus is not INIT");
-                    return Err(QvOpenApiError::WindowCreationError);
-                }
-                let create_result = create_window();
-
-                if create_result.is_err() {
-                    manager.status = WindowManagerStatus::ERROR;
-                    info!("WindowManagerStatus is ERROR");
-                    return Err(QvOpenApiError::WindowCreationError);
-                }
-
-                hwnd = create_result.unwrap().0;
-                manager.hwnd = Some(hwnd);
-                manager.status = WindowManagerStatus::CREATED;
-                info!("Window created (hwnd: {})", manager.hwnd.unwrap());
-            }
-            loop_message(hwnd);
-            {
-                let mut manager = manager_lock.write().unwrap();
-                manager.status = WindowManagerStatus::DESTROYED;
-                info!("Window destroyed");
-            }
-            Ok(())
+        manager.thread = Some(std::thread::spawn(move || {
+            run_window_sync(&manager_lock)
         }));
     }
 
@@ -108,6 +86,40 @@ pub fn run_window(
         info!("WindowManagerStatus is not CREATED");
         return Err(QvOpenApiError::WindowCreationError);
     }
+}
+
+pub fn run_window_sync(
+    manager_lock: &'static RwLock<WindowManager>,
+) -> std::result::Result<(), QvOpenApiError> {
+
+    let hwnd;
+    {
+        info!("Window creating...");
+        let mut manager = manager_lock.write().unwrap();
+        if manager.status != WindowManagerStatus::INIT {
+            info!("WindowManagerStatus is not INIT");
+            return Err(QvOpenApiError::WindowCreationError);
+        }
+        let create_result = create_window();
+
+        if create_result.is_err() {
+            manager.status = WindowManagerStatus::ERROR;
+            info!("WindowManagerStatus is ERROR");
+            return Err(QvOpenApiError::WindowCreationError);
+        }
+
+        hwnd = create_result.unwrap().0;
+        manager.hwnd = Some(hwnd);
+        manager.status = WindowManagerStatus::CREATED;
+        info!("Window created (hwnd: {})", manager.hwnd.unwrap());
+    }
+    loop_message(hwnd);
+    {
+        let mut manager = manager_lock.write().unwrap();
+        manager.status = WindowManagerStatus::DESTROYED;
+        info!("Window destroyed");
+    }
+    Ok(())
 }
 
 pub fn create_window() -> windows::core::Result<HWND> {
@@ -154,7 +166,7 @@ pub fn create_window() -> windows::core::Result<HWND> {
 pub fn loop_message(hwnd: isize) {
     unsafe {
         let mut message = MSG::default();
-        while GetMessageW(&mut message, HWND(hwnd), 0, 0).into() {
+        while GetMessageW(&mut message, HWND(hwnd), 0, 0).0 == 1 {
             TranslateMessage(&message);
             DispatchMessageW(&message);
         }
@@ -197,8 +209,18 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                     }
                 }
             }
+            WM_CUSTOMEVENT => {
+                debug!("WM_CUSTOMEVENT {}", wparam.0);
+                match on_custom_event(wparam.0, lparam.0) {
+                    Ok(()) => LRESULT(0),
+                    Err(e) => {
+                        error!("QvOpenApiError: {}", e);
+                        LRESULT(0)
+                    }
+                }
+            }
             _ => {
-                debug!("DefWindowProcW {} {} {}", message, wparam.0, lparam.0);
+                //debug!("DefWindowProcW {} {} {}", message, wparam.0, lparam.0);
                 DefWindowProcW(hwnd, message, wparam, lparam)
             }
         }
@@ -235,6 +257,17 @@ fn on_wmca_event(message_type: usize, lparam: isize) -> std::result::Result<(), 
     }
 }
 
+fn on_custom_event(message_type: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    match u32::try_from(message_type).unwrap() {
+        CA_COMMAND => {
+            command::execute_command()
+        },
+        _ => Err(QvOpenApiError::WindowUnknownEventError {
+            wparam: message_type,
+        }),
+    }
+}
+
 #[repr(C)]
 pub struct OutDataBlock<T> {
     pub tr_index: c_int,
@@ -260,7 +293,7 @@ fn on_receive_message(lparam: isize) -> std::result::Result<(), QvOpenApiError> 
         let msg_header = (*(*data_block).p_data).sz_data;
         let message_code = from_cp949(&(*msg_header).message_code);
         let message = from_cp949(&(*msg_header).message);
-        debug!("CA_RECEIVEMESSAGE [{}] \"{}\"", message_code, message);
+        info!("CA_RECEIVEMESSAGE [{}] \"{}\"", message_code, message);
     }
 
     Ok(())
@@ -317,4 +350,25 @@ unsafe fn draw(hwnd: HWND) {
         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
     );
     ReleaseDC(hwnd, dc);
+}
+
+pub fn get_hwnd() -> std::result::Result<isize, QvOpenApiError> {
+    match WINDOW_MANAGER_LOCK.read().unwrap().hwnd {
+        Some(hwnd) => Ok(hwnd),
+        None => Err(QvOpenApiError::WindowNotCreatedError),
+    }
+}
+
+pub fn send_message(msg: u32, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    unsafe {
+        SendMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
+    }
+    return Ok(());
+}
+
+pub fn post_message(msg: u32, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    unsafe {
+        PostMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
+    }
+    return Ok(());
 }

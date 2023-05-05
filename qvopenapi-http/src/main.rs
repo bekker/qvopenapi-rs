@@ -11,13 +11,12 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     qvopenapi::init()?;
     info!("is_connected : {}", qvopenapi::is_connected()?);
     std::thread::sleep(Duration::from_millis(100));
-    qvopenapi::connect(AccountType::NAMUH, "id", "password", "cert_pw")?;
-    qvopenapi::post_message(1234, 1234, 1234)?;
+    qvopenapi::connect(AccountType::NAMUH, "abcd", "abcd", "abcd")?;
     info!("is_connected : {}", qvopenapi::is_connected()?);
     qvopenapi::query("c1101", "asdf", 0)?;
     std::thread::sleep(Duration::from_millis(100));
-    qvopenapi::connect(AccountType::NAMUH, "id2", "password", "cert_pw")?;
-    std::thread::sleep(Duration::from_millis(5000));
+    //qvopenapi::connect(AccountType::NAMUH, "id2", "password", "cert_pw")?;
+    std::thread::sleep(Duration::from_millis(50000));
 
     Ok(())
 }
