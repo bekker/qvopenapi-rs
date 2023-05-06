@@ -19,9 +19,16 @@ pub fn init() -> Result<(), QvOpenApiError> {
     Ok(())
 }
 
+pub fn assert_connected() -> Result<(), QvOpenApiError> {
+    match is_connected() {
+        Ok(true) => Ok(()),
+        Ok(false) => Err(QvOpenApiError::NotConnectedError),
+        Err(e) => Err(e)
+    }
+}
+
 pub fn is_connected() -> Result<bool, QvOpenApiError> {
     let ret = (get_lib()?.is_connected)();
-    debug!("is_connected {}", ret);
     Ok(ret != 0)
 }
 

@@ -11,6 +11,7 @@ custom_error! {#[derive(Clone)] pub QvOpenApiError
     WindowUnknownEventError{ wparam: usize } = "Unknown event {wparam}",
     EventUnimplementedError{ event: String } = "Unimplemented event {event}",
     ReturnCodeError{ code: i32 } = "Return code {code}",
+    NotConnectedError = "Not connected",
     QvApiMessageError{ message_code: String, message: String } = "[{message_code}] {message}",
 }
 

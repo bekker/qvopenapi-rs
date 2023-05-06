@@ -42,12 +42,8 @@ pub fn on_wmca_msg(message_type: usize, lparam: isize) -> std::result::Result<()
             event: String::from("CA_RECEIVESISE"),
         }),
         CA_RECEIVEMESSAGE => on_receive_message(lparam),
-        CA_RECEIVECOMPLETE => Err(QvOpenApiError::EventUnimplementedError {
-            event: String::from("CA_RECEIVECOMPLETE"),
-        }),
-        CA_RECEIVEERROR => Err(QvOpenApiError::EventUnimplementedError {
-            event: String::from("CA_RECEIVEERROR"),
-        }),
+        CA_RECEIVECOMPLETE => on_receive_complete(lparam),
+        CA_RECEIVEERROR => on_receive_error(lparam),
         _ => Err(QvOpenApiError::WindowUnknownEventError {
             wparam: message_type,
         }),
@@ -70,10 +66,10 @@ fn on_connect(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
     let data_block = lparam as *const LoginBlock;
     unsafe {
         let login_info = (*data_block).login_info;
-        let login_datetime = from_cp949(&(*login_info).login_datetime);
-        let server_name = from_cp949(&(*login_info).server_name);
+        let login_datetime = from_cp949(&(*login_info).login_datetime); // "20230506203715"
+        let server_name = from_cp949(&(*login_info).server_name); // "htsi194        "
         let user_id = from_cp949(&(*login_info).user_id);
-        let account_count = from_cp949(&(*login_info).account_count);
+        let account_count = from_cp949(&(*login_info).account_count); // "002"
         let account_infoes = Vec::new();
 
         info!("CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")", login_datetime, server_name, user_id, account_count);
@@ -96,9 +92,31 @@ fn on_receive_message(lparam: isize) -> std::result::Result<(), QvOpenApiError> 
         let message = from_cp949(&(*msg_header).message);
         info!("CA_RECEIVEMESSAGE [{}] \"{}\"", message_code, message);
 
-        end_active_request(Err(QvOpenApiError::QvApiMessageError { message_code, message }))?;
+        if message_code != "00000" {
+            end_active_request(Err(QvOpenApiError::QvApiMessageError { message_code, message }))?;
+        }
     }
 
+    Ok(())
+}
+
+fn on_receive_complete(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    let data_block = lparam as *const OutDataBlock<()>;
+    unsafe {
+        let tr_index = (*data_block).tr_index;
+        info!("CA_RECEIVECOMPLETE (tr_index: {})", tr_index);
+        end_active_request(Ok(Arc::new(QueryResponse{})))?;
+    }
+    Ok(())
+}
+
+fn on_receive_error(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    let data_block = lparam as *const OutDataBlock<c_char>;
+    unsafe {
+        let error_msg = from_cp949_ptr((*(*data_block).p_data).sz_data);
+        info!("CA_RECEIVEERROR \"{}\"", error_msg);
+        end_active_request(Err(QvOpenApiError::QvApiMessageError { message_code: String::from("ERROR"), message: error_msg }))?;
+    }
     Ok(())
 }
 

@@ -10,7 +10,6 @@ async fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     );
     qvopenapi::init()?;
     info!("is_connected : {}", qvopenapi::is_connected()?);
-    qvopenapi::connect(AccountType::NAMUH, "abcd", "abcd", "abcd").await;
     info!("is_connected : {}", qvopenapi::is_connected()?);
     qvopenapi::query("c1101", "asdf", 0).await;
     std::thread::sleep(Duration::from_millis(100));

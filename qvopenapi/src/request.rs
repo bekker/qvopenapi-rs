@@ -54,6 +54,9 @@ pub struct ConnectRequest {
 }
 
 impl WmcaRequest for ConnectRequest {
+    fn before_post(&self) -> Result<(), QvOpenApiError> {
+        Ok(())
+    }
     fn call_lib(&self) -> Result<(), QvOpenApiError> {
         wmca_lib::connect(
             self.account_type,
@@ -71,12 +74,16 @@ pub struct QueryRequest {
 }
 
 impl WmcaRequest for QueryRequest {
+    fn before_post(&self) -> Result<(), QvOpenApiError> {
+        wmca_lib::assert_connected()
+    }
     fn call_lib(&self) -> Result<(), QvOpenApiError> {
         wmca_lib::query(&self.tr_code, &self.input, self.account_index)
     }
 }
 
 pub trait WmcaRequest {
+    fn before_post(&self) -> Result<(), QvOpenApiError>;
     fn call_lib(&self) -> Result<(), QvOpenApiError>;
 }
 
@@ -96,6 +103,8 @@ pub fn post_request<T>(req: Arc<WmcaRequestType>) -> ResponseFuture<T> {
 
 fn do_post_request<T>(req: Arc<WmcaRequestType>) -> Result<Arc<ResponseFutureInner<T>>, QvOpenApiError> {
     debug!("do_post_request");
+
+    req.before_post()?;
 
     let future: Arc<ResponseFutureInner<T>> = Arc::new(ResponseFutureInner {
         request: req,
