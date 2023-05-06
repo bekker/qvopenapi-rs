@@ -7,25 +7,25 @@ use std::{
 use crate::{*};
 
 type WmcaRequestType = dyn WmcaRequest + Send + Sync;
-type WmcaResponseType = dyn WmcaResponse + Send + Sync;
+type WmcaResponseType = dyn Send + Sync;
 
 lazy_static! {
-    static ref REQUEST_QUEUE_LOCK: RwLock<VecDeque<Arc<ResponseFutureInner>>> = RwLock::new(VecDeque::new());
-    static ref ACTIVE_REQUEST_LOCK: Mutex<Option<Arc<ResponseFutureInner>>> = Mutex::new(None);
+    static ref REQUEST_QUEUE_LOCK: RwLock<VecDeque<Arc<ResponseFutureInner<WmcaResponseType>>>> = RwLock::new(VecDeque::new());
+    static ref ACTIVE_REQUEST_LOCK: Mutex<Option<Arc<ResponseFutureInner<WmcaResponseType>>>> = Mutex::new(None);
     static ref WAKERS_LOCK: Mutex<VecDeque<Waker>> = Mutex::new(VecDeque::new());
 }
 
-pub struct ResponseFutureInner {
+pub struct ResponseFutureInner<T: ?Sized> {
     pub request: Arc<WmcaRequestType>,
-    pub response: Mutex<Option<Result<Arc<WmcaResponseType>, QvOpenApiError>>>,
+    pub response: Mutex<Option<Result<Arc<T>, QvOpenApiError>>>,
 }
 
-pub struct ResponseFuture {
-    pub inner: Arc<ResponseFutureInner>
+pub struct ResponseFuture<T: ?Sized> {
+    pub inner: Arc<ResponseFutureInner<T>>
 }
 
-impl Future for ResponseFuture {
-    type Output = Result<Arc<WmcaResponseType>, QvOpenApiError>;
+impl <T> Future for ResponseFuture<T> {
+    type Output = Result<Arc<T>, QvOpenApiError>;
  
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         //debug!("polling...");
@@ -80,11 +80,7 @@ pub trait WmcaRequest {
     fn call_lib(&self) -> Result<(), QvOpenApiError>;
 }
 
-pub trait WmcaResponse {
-
-}
-
-pub fn post_request(req: Arc<WmcaRequestType>) -> ResponseFuture {
+pub fn post_request<T>(req: Arc<WmcaRequestType>) -> ResponseFuture<T> {
     debug!("post_request");
     let ret = do_post_request(req.clone());
     match ret {
@@ -98,16 +94,16 @@ pub fn post_request(req: Arc<WmcaRequestType>) -> ResponseFuture {
     }
 }
 
-fn do_post_request(req: Arc<WmcaRequestType>) -> Result<Arc<ResponseFutureInner>, QvOpenApiError> {
+fn do_post_request<T>(req: Arc<WmcaRequestType>) -> Result<Arc<ResponseFutureInner<T>>, QvOpenApiError> {
     debug!("do_post_request");
 
-    let future = Arc::new(ResponseFutureInner {
+    let future: Arc<ResponseFutureInner<T>> = Arc::new(ResponseFutureInner {
         request: req,
         response: Mutex::new(None),
     });
-    {
+    unsafe {
         let mut queue = REQUEST_QUEUE_LOCK.write().unwrap();
-        queue.push_back(future.clone());
+        queue.push_back(std::mem::transmute(future.clone()));
     }
     let mut current_req = ACTIVE_REQUEST_LOCK.lock().unwrap();
     activate_next_request_if_available(&mut current_req)?;
@@ -115,7 +111,7 @@ fn do_post_request(req: Arc<WmcaRequestType>) -> Result<Arc<ResponseFutureInner>
     Ok(future)
 }
 
-fn activate_next_request_if_available(current_req: &mut Option<Arc<ResponseFutureInner>>) -> Result<(), QvOpenApiError> {
+fn activate_next_request_if_available(current_req: &mut Option<Arc<ResponseFutureInner<WmcaResponseType>>>) -> Result<(), QvOpenApiError> {
     debug!("activate_next_request_if_available: Trying to get lock...");
     if current_req.is_none() {
         let mut queue = REQUEST_QUEUE_LOCK.write().unwrap();

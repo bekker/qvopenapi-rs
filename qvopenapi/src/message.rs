@@ -1,8 +1,10 @@
 use crate::{*, request::end_active_request};
 use log::*;
-use std::ffi::{c_char, c_int, CStr};
+use std::ffi::{c_char, CStr};
+use std::time::Instant;
 
 use crate::error::*;
+use crate::basic_structs::*;
 use encoding::{all::WINDOWS_949, DecoderTrap, Encoding};
 use windows::Win32::UI::WindowsAndMessaging::WM_USER;
 
@@ -26,9 +28,7 @@ pub const CA_COMMAND: u32 = WM_USER + 110;
  */
 pub fn on_wmca_msg(message_type: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
     match u32::try_from(message_type).unwrap() {
-        CA_CONNECTED => Err(QvOpenApiError::EventUnimplementedError {
-            event: String::from("CA_CONNECTED"),
-        }),
+        CA_CONNECTED => on_connect(lparam),
         CA_DISCONNECTED => Err(QvOpenApiError::EventUnimplementedError {
             event: String::from("CA_DISCONNECTED"),
         }),
@@ -66,23 +66,26 @@ pub fn on_custom_msg(
     }
 }
 
-#[repr(C)]
-pub struct OutDataBlock<T> {
-    pub tr_index: c_int,
-    pub p_data: *const ReceivedData<T>,
-}
+fn on_connect(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    let data_block = lparam as *const LoginBlock;
+    unsafe {
+        let login_info = (*data_block).login_info;
+        let login_datetime = from_cp949(&(*login_info).login_datetime);
+        let server_name = from_cp949(&(*login_info).server_name);
+        let user_id = from_cp949(&(*login_info).user_id);
+        let account_count = from_cp949(&(*login_info).account_count);
+        let account_infoes = Vec::new();
 
-#[repr(C)]
-pub struct ReceivedData<T> {
-    pub block_name: *const c_char,
-    pub sz_data: *const T,
-    pub len: c_int,
-}
+        info!("CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")", login_datetime, server_name, user_id, account_count);
 
-#[repr(C)]
-pub struct MessageHeader {
-    pub message_code: [c_char; 5],
-    pub message: [c_char; 80],
+        end_active_request(Ok(Arc::new(ConnectResponse {
+            login_datetime: Instant::now(),
+            server_name,
+            user_id,
+            account_count: 0,
+            account_infoes,
+        })))
+    }
 }
 
 fn on_receive_message(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
