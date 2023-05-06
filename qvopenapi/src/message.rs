@@ -1,4 +1,4 @@
-use crate::*;
+use crate::{*, request::end_active_request};
 use log::*;
 use std::ffi::{c_char, c_int, CStr};
 
@@ -59,7 +59,7 @@ pub fn on_custom_msg(
     lparam: isize,
 ) -> std::result::Result<(), QvOpenApiError> {
     match u32::try_from(message_type).unwrap() {
-        CA_COMMAND => request::execute_command(),
+        CA_COMMAND => request::execute_active_request(),
         _ => Err(QvOpenApiError::WindowUnknownEventError {
             wparam: message_type,
         }),
@@ -92,6 +92,8 @@ fn on_receive_message(lparam: isize) -> std::result::Result<(), QvOpenApiError> 
         let message_code = from_cp949(&(*msg_header).message_code);
         let message = from_cp949(&(*msg_header).message);
         info!("CA_RECEIVEMESSAGE [{}] \"{}\"", message_code, message);
+
+        end_active_request(Err(QvOpenApiError::QvApiMessageError { message_code, message }))?;
     }
 
     Ok(())

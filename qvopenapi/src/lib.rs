@@ -10,6 +10,7 @@ mod wmca_lib;
 use std::sync::Arc;
 
 pub use error::*;
+use request::ResponseFuture;
 pub use wmca_lib::{init, is_connected};
 
 #[derive(strum_macros::Display, Clone, Copy)]
@@ -23,21 +24,21 @@ pub fn connect(
     id: &str,
     password: &str,
     cert_password: &str,
-) -> Result<(), QvOpenApiError> {
-    let cmd = request::ConnectRequest {
+) -> ResponseFuture {
+    let req = request::ConnectRequest {
         account_type: account_type,
         id: id.to_string(),
         password: password.to_string(),
         cert_password: cert_password.to_string(),
     };
-    request::post_request(Arc::new(cmd))
+    request::post_request(Arc::new(req))
 }
 
-pub fn query(tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
-    let cmd = request::QueryRequest {
+pub fn query(tr_code: &str, input: &str, account_index: i32) -> ResponseFuture {
+    let req = request::QueryRequest {
         tr_code: tr_code.to_string(),
         input: input.to_string(),
         account_index: account_index,
     };
-    request::post_request(Arc::new(cmd))
+    request::post_request(Arc::new(req))
 }
