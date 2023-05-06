@@ -9,7 +9,10 @@ edition = "2021"
 env_logger = "0.10.0"
 log = "0.4.17"
 qvopenapi = { path = "../qvopenapi" }
+serde = { workspace = true }
+serde_json = { workspace = true }
 tokio = { version = "1.28.0", features = ["full"] }
+warp = "0.3.5"
 
 [features]
 disable-unwind = [ "qvopenapi/disable-unwind" ]

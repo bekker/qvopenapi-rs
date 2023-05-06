@@ -1,21 +1,104 @@
-use log::*;
-use std::time::Duration;
+use std::convert::Infallible;
+
+use ::log::*;
+use serde::{Deserialize, Serialize};
+use warp::{
+    http::{Response, StatusCode},
+    *,
+};
 
 extern crate qvopenapi;
-use qvopenapi::AccountType;
+extern crate serde;
+use qvopenapi::{AccountType, QvOpenApiError};
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct MessageResponse {
+    message: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ConnectRequest {
+    id: String,
+    password: String,
+    cert_password: String,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct ConnectResponse {
+    pub login_datetime: String,
+    pub server_name: String,
+    pub user_id: String,
+    pub account_count: usize,
+    pub account_infoes: Vec<AccountInfoResponse>,
+}
+
+#[derive(Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+struct AccountInfoResponse {
+    pub account_no: String,
+    pub account_name: String,
+    // 상품 코드
+    pub act_pdt_cdz3: String,
+    // 관리점 코드
+    pub amn_tab_cdz4: String,
+    // 위임 만기일
+    pub expr_datez8: String,
+    // 일괄주문 허용계좌(G:허용)
+    pub bulk_granted: bool,
+}
 
 async fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
     );
     qvopenapi::init()?;
-    info!("is_connected : {}", qvopenapi::is_connected()?);
-    qvopenapi::query("c1101", "asdf", 0).await;
-    std::thread::sleep(Duration::from_millis(100));
-    //qvopenapi::connect(AccountType::NAMUH, "id2", "password", "cert_pw")?;
-    std::thread::sleep(Duration::from_millis(50000));
+
+    let connect_filter = post()
+        .and(path("connect"))
+        .and(body::json())
+        .and_then(connect);
+
+    serve(connect_filter).run(([127, 0, 0, 1], 18000)).await;
 
     Ok(())
+}
+
+async fn connect(request: ConnectRequest) -> Result<impl Reply, Infallible> {
+    let ret = qvopenapi::connect(
+        AccountType::NAMUH,
+        request.id.as_str(),
+        request.password.as_str(),
+        request.cert_password.as_str()
+    ).await;
+
+    if ret.is_err() {
+        return Ok(reply::with_status(
+            reply::json(&MessageResponse{message: String::from(ret.err().unwrap().to_string())}), 
+            StatusCode::INTERNAL_SERVER_ERROR
+        ));
+    }
+
+    let connect_dto = ret.unwrap();
+
+    Ok(reply::with_status(reply::json(&ConnectResponse {
+        login_datetime: connect_dto.login_datetime.to_rfc3339(),
+        server_name: connect_dto.server_name.clone(),
+        user_id: connect_dto.user_id.clone(),
+        account_count: connect_dto.account_count,
+        account_infoes: connect_dto.account_infoes.iter().map(|acc_info_dto| {
+            AccountInfoResponse {
+                account_no: acc_info_dto.account_no.clone(),
+                account_name: acc_info_dto.account_name.clone(),
+                act_pdt_cdz3: acc_info_dto.act_pdt_cdz3.clone(),
+                amn_tab_cdz4: acc_info_dto.amn_tab_cdz4.clone(),
+                expr_datez8: acc_info_dto.expr_datez8.clone(),
+                bulk_granted: acc_info_dto.bulk_granted,
+            }
+        }).collect(),
+    }), StatusCode::OK))
 }
 
 #[tokio::main]

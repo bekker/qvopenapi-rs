@@ -74,29 +74,28 @@ fn on_connect(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
         let server_name = String::from(from_cp949(&(*login_info).server_name).trim()); // "htsi194        "
         let user_id = from_cp949(&(*login_info).user_id);
         let account_count_str = from_cp949(&(*login_info).account_count); // "002"
-        let mut account_infoes = Vec::new();
 
         info!(
             "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
             login_datetime_str, server_name, user_id, account_count_str
         );
 
-        for account_info_raw in (*login_info).account_infoes.iter() {
+        let account_infoes = (*login_info).account_infoes.iter().map(|account_info_raw| {
             let account_no = from_cp949(&account_info_raw.account_no);
             let account_name = from_cp949(&account_info_raw.account_name);
             let act_pdt_cdz3 = from_cp949(&account_info_raw.act_pdt_cdz3);
             let amn_tab_cdz4 = from_cp949(&account_info_raw.amn_tab_cdz4);
             let expr_datez8 = from_cp949(&account_info_raw.expr_datez8);
             let bulk_granted = account_info_raw.granted == 'G' as i8;
-            account_infoes.push(AccountInfoResponse {
+            AccountInfoResponse {
                 account_no,
                 account_name,
                 act_pdt_cdz3,
                 amn_tab_cdz4,
                 expr_datez8,
                 bulk_granted,
-            })
-        }
+            }
+        }).collect();
 
         let login_datetime = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?;
         let account_count: usize = account_count_str.parse().unwrap();

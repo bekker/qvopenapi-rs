@@ -19,3 +19,5 @@ windows-sys = {version = "0.48", features = [
     "Win32_Foundation",
 ]}
 custom_error = "1.9.2"
+serde = { version = "1.0.162", features = ["derive"] }
+serde_json = "1.0.96"
