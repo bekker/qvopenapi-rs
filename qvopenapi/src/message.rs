@@ -80,12 +80,16 @@ fn on_connect(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
             login_datetime_str, server_name, user_id, account_count_str
         );
 
-        let account_infoes = (*login_info).account_infoes.iter().map(|account_info_raw| {
+        let account_count: usize = account_count_str.parse().unwrap();
+
+        let account_infoes = (*login_info).account_infoes.iter()
+        .take(account_count)
+        .map(|account_info_raw| {
             let account_no = from_cp949(&account_info_raw.account_no);
-            let account_name = from_cp949(&account_info_raw.account_name);
+            let account_name = String::from(from_cp949(&account_info_raw.account_name).trim());
             let act_pdt_cdz3 = from_cp949(&account_info_raw.act_pdt_cdz3);
             let amn_tab_cdz4 = from_cp949(&account_info_raw.amn_tab_cdz4);
-            let expr_datez8 = from_cp949(&account_info_raw.expr_datez8);
+            let expr_datez8 = String::from(from_cp949(&account_info_raw.expr_datez8).trim());
             let bulk_granted = account_info_raw.granted == 'G' as i8;
             AccountInfoResponse {
                 account_no,
@@ -98,7 +102,6 @@ fn on_connect(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
         }).collect();
 
         let login_datetime = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?;
-        let account_count: usize = account_count_str.parse().unwrap();
 
         end_active_request(Ok(Arc::new(ConnectResponse {
             login_datetime,
