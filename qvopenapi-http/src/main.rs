@@ -75,10 +75,7 @@ async fn connect(request: ConnectRequest) -> Result<impl Reply, Infallible> {
     ).await;
 
     if ret.is_err() {
-        return Ok(reply::with_status(
-            reply::json(&MessageResponse{message: String::from(ret.err().unwrap().to_string())}), 
-            StatusCode::INTERNAL_SERVER_ERROR
-        ));
+        return convert_error(ret.err().unwrap());
     }
 
     let connect_dto = ret.unwrap();
@@ -99,6 +96,19 @@ async fn connect(request: ConnectRequest) -> Result<impl Reply, Infallible> {
             }
         }).collect(),
     }), StatusCode::OK))
+}
+
+fn convert_error(err: QvOpenApiError) -> Result<reply::WithStatus<reply::Json>, Infallible> {
+    match err {
+        QvOpenApiError::AlreadyConnectedError => Ok(reply::with_status(
+            reply::json(&MessageResponse{message: String::from(QvOpenApiError::AlreadyConnectedError.to_string())}), 
+            StatusCode::BAD_REQUEST
+        )),
+        err => Ok(reply::with_status(
+            reply::json(&MessageResponse{message: String::from(err.to_string())}), 
+            StatusCode::INTERNAL_SERVER_ERROR
+        ))
+    }
 }
 
 #[tokio::main]

@@ -14,6 +14,7 @@ custom_error! {#[derive(Clone)] pub QvOpenApiError
     NotConnectedError = "Not connected",
     QvApiMessageError{ message_code: String, message: String } = "[{message_code}] {message}",
     ParseDateTimeError = "Failed to parse datetime",
+    AlreadyConnectedError = "Already connected",
 }
 
 impl From<libloading::Error> for QvOpenApiError {

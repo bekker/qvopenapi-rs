@@ -59,6 +59,10 @@ pub struct ConnectRequest {
 
 impl WmcaRequest for ConnectRequest {
     fn before_post(&self) -> Result<(), QvOpenApiError> {
+        if wmca_lib::is_connected()? {
+            return Err(QvOpenApiError::AlreadyConnectedError)
+        }
+
         Ok(())
     }
     fn call_lib(&self) -> Result<(), QvOpenApiError> {
@@ -110,8 +114,6 @@ fn do_post_request<T>(
 ) -> Result<Arc<ResponseFutureInner<T>>, QvOpenApiError> {
     debug!("do_post_request");
 
-    req.before_post()?;
-
     let future: Arc<ResponseFutureInner<T>> = Arc::new(ResponseFutureInner {
         request: req,
         response: Mutex::new(None),
@@ -135,6 +137,8 @@ fn activate_next_request_if_available(
         let req = queue.pop_front();
 
         if req.is_some() {
+            req.as_ref().unwrap().request.before_post()?;
+
             *current_req = req;
 
             return window_mgr::post_message(
