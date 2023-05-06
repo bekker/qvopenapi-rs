@@ -1,10 +1,10 @@
 extern crate qvopenapi_sys;
 #[macro_use]
 extern crate lazy_static;
-mod error;
 mod basic_structs;
-mod public_structs;
+mod error;
 mod message;
+mod public_structs;
 mod request;
 mod window_mgr;
 mod wmca_lib;
@@ -12,9 +12,9 @@ mod wmca_lib;
 use std::sync::Arc;
 
 pub use error::*;
+pub use public_structs::*;
 use request::*;
 pub use wmca_lib::{init, is_connected};
-pub use public_structs::*;
 
 #[derive(strum_macros::Display, Clone, Copy)]
 pub enum AccountType {

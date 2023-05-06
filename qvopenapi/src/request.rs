@@ -1,17 +1,22 @@
 use log::*;
 use std::{
     collections::VecDeque,
-    sync::{Arc, RwLock, Mutex}, future::Future, pin::Pin, task::{Context, Poll, Waker},
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Mutex, RwLock},
+    task::{Context, Poll, Waker},
 };
 
-use crate::{*};
+use crate::*;
 
 type WmcaRequestType = dyn WmcaRequest + Send + Sync;
 type WmcaResponseType = dyn Send + Sync;
 
 lazy_static! {
-    static ref REQUEST_QUEUE_LOCK: RwLock<VecDeque<Arc<ResponseFutureInner<WmcaResponseType>>>> = RwLock::new(VecDeque::new());
-    static ref ACTIVE_REQUEST_LOCK: Mutex<Option<Arc<ResponseFutureInner<WmcaResponseType>>>> = Mutex::new(None);
+    static ref REQUEST_QUEUE_LOCK: RwLock<VecDeque<Arc<ResponseFutureInner<WmcaResponseType>>>> =
+        RwLock::new(VecDeque::new());
+    static ref ACTIVE_REQUEST_LOCK: Mutex<Option<Arc<ResponseFutureInner<WmcaResponseType>>>> =
+        Mutex::new(None);
     static ref WAKERS_LOCK: Mutex<VecDeque<Waker>> = Mutex::new(VecDeque::new());
 }
 
@@ -21,27 +26,26 @@ pub struct ResponseFutureInner<T: ?Sized> {
 }
 
 pub struct ResponseFuture<T: ?Sized> {
-    pub inner: Arc<ResponseFutureInner<T>>
+    pub inner: Arc<ResponseFutureInner<T>>,
 }
 
-impl <T> Future for ResponseFuture<T> {
+impl<T> Future for ResponseFuture<T> {
     type Output = Result<Arc<T>, QvOpenApiError>;
- 
+
     fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         //debug!("polling...");
         let res = self.inner.response.lock().unwrap();
-        
+
         match res.as_ref() {
-            Some(result) => 
-                match result {
-                    Ok(v) => Poll::Ready(Ok(v.clone())),
-                    Err(e) => Poll::Ready(Err(e.clone()))
-                },
+            Some(result) => match result {
+                Ok(v) => Poll::Ready(Ok(v.clone())),
+                Err(e) => Poll::Ready(Err(e.clone())),
+            },
             None => {
                 let mut wakers = WAKERS_LOCK.lock().unwrap();
                 wakers.push_back(cx.waker().clone());
                 Poll::Pending
-            },
+            }
         }
     }
 }
@@ -95,13 +99,15 @@ pub fn post_request<T>(req: Arc<WmcaRequestType>) -> ResponseFuture<T> {
         Err(e) => ResponseFuture {
             inner: Arc::new(ResponseFutureInner {
                 request: req,
-                response: Mutex::new(Some(Err(e)))
-            })
-        }
+                response: Mutex::new(Some(Err(e))),
+            }),
+        },
     }
 }
 
-fn do_post_request<T>(req: Arc<WmcaRequestType>) -> Result<Arc<ResponseFutureInner<T>>, QvOpenApiError> {
+fn do_post_request<T>(
+    req: Arc<WmcaRequestType>,
+) -> Result<Arc<ResponseFutureInner<T>>, QvOpenApiError> {
     debug!("do_post_request");
 
     req.before_post()?;
@@ -120,7 +126,9 @@ fn do_post_request<T>(req: Arc<WmcaRequestType>) -> Result<Arc<ResponseFutureInn
     Ok(future)
 }
 
-fn activate_next_request_if_available(current_req: &mut Option<Arc<ResponseFutureInner<WmcaResponseType>>>) -> Result<(), QvOpenApiError> {
+fn activate_next_request_if_available(
+    current_req: &mut Option<Arc<ResponseFutureInner<WmcaResponseType>>>,
+) -> Result<(), QvOpenApiError> {
     debug!("activate_next_request_if_available: Trying to get lock...");
     if current_req.is_none() {
         let mut queue = REQUEST_QUEUE_LOCK.write().unwrap();
@@ -133,7 +141,7 @@ fn activate_next_request_if_available(current_req: &mut Option<Arc<ResponseFutur
                 message::WM_CUSTOMEVENT,
                 message::CA_COMMAND.try_into().unwrap(),
                 0,
-            )
+            );
         } else {
             debug!("activate_next_request_if_available: No active req found");
         }
@@ -156,13 +164,15 @@ pub fn execute_active_request() -> Result<(), QvOpenApiError> {
     current_req.as_ref().unwrap().request.call_lib()
 }
 
-pub fn end_active_request(result: Result<Arc<WmcaResponseType>, QvOpenApiError>) -> Result<(), QvOpenApiError> {
+pub fn end_active_request(
+    result: Result<Arc<WmcaResponseType>, QvOpenApiError>,
+) -> Result<(), QvOpenApiError> {
     debug!("end_active_request");
     let mut current_req = ACTIVE_REQUEST_LOCK.lock().unwrap();
 
     if current_req.is_none() {
         error!("Tried to register result, but no active request found");
-        return Ok(())
+        return Ok(());
     }
 
     {

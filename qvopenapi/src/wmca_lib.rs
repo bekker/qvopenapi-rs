@@ -23,7 +23,7 @@ pub fn assert_connected() -> Result<(), QvOpenApiError> {
     match is_connected() {
         Ok(true) => Ok(()),
         Ok(false) => Err(QvOpenApiError::NotConnectedError),
-        Err(e) => Err(e)
+        Err(e) => Err(e),
     }
 }
 

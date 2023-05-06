@@ -239,17 +239,6 @@ pub fn get_hwnd() -> std::result::Result<isize, QvOpenApiError> {
     }
 }
 
-pub fn send_message(
-    msg: u32,
-    wparam: usize,
-    lparam: isize,
-) -> std::result::Result<(), QvOpenApiError> {
-    unsafe {
-        SendMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
-    }
-    Ok(())
-}
-
 pub fn post_message(
     msg: u32,
     wparam: usize,

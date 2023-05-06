@@ -1,10 +1,10 @@
-use crate::{*, request::end_active_request};
+use crate::{request::end_active_request, *};
+use chrono::{FixedOffset, TimeZone};
 use log::*;
 use std::ffi::{c_char, CStr};
-use std::time::Instant;
 
-use crate::error::*;
 use crate::basic_structs::*;
+use crate::error::*;
 use encoding::{all::WINDOWS_949, DecoderTrap, Encoding};
 use windows::Win32::UI::WindowsAndMessaging::WM_USER;
 
@@ -52,7 +52,7 @@ pub fn on_wmca_msg(message_type: usize, lparam: isize) -> std::result::Result<()
 
 pub fn on_custom_msg(
     message_type: usize,
-    lparam: isize,
+    _lparam: isize,
 ) -> std::result::Result<(), QvOpenApiError> {
     match u32::try_from(message_type).unwrap() {
         CA_COMMAND => request::execute_active_request(),
@@ -62,23 +62,50 @@ pub fn on_custom_msg(
     }
 }
 
+lazy_static! {
+    static ref SEOUL_TZ: FixedOffset = FixedOffset::east_opt(9 * 3600).unwrap();
+}
+
 fn on_connect(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
     let data_block = lparam as *const LoginBlock;
     unsafe {
         let login_info = (*data_block).login_info;
-        let login_datetime = from_cp949(&(*login_info).login_datetime); // "20230506203715"
-        let server_name = from_cp949(&(*login_info).server_name); // "htsi194        "
+        let login_datetime_str = from_cp949(&(*login_info).login_datetime); // "20230506203715"
+        let server_name = String::from(from_cp949(&(*login_info).server_name).trim()); // "htsi194        "
         let user_id = from_cp949(&(*login_info).user_id);
-        let account_count = from_cp949(&(*login_info).account_count); // "002"
-        let account_infoes = Vec::new();
+        let account_count_str = from_cp949(&(*login_info).account_count); // "002"
+        let mut account_infoes = Vec::new();
 
-        info!("CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")", login_datetime, server_name, user_id, account_count);
+        info!(
+            "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
+            login_datetime_str, server_name, user_id, account_count_str
+        );
+
+        for account_info_raw in (*login_info).account_infoes.iter() {
+            let account_no = from_cp949(&account_info_raw.account_no);
+            let account_name = from_cp949(&account_info_raw.account_name);
+            let act_pdt_cdz3 = from_cp949(&account_info_raw.act_pdt_cdz3);
+            let amn_tab_cdz4 = from_cp949(&account_info_raw.amn_tab_cdz4);
+            let expr_datez8 = from_cp949(&account_info_raw.expr_datez8);
+            let bulk_granted = account_info_raw.granted == 'G' as i8;
+            account_infoes.push(AccountInfoResponse {
+                account_no,
+                account_name,
+                act_pdt_cdz3,
+                amn_tab_cdz4,
+                expr_datez8,
+                bulk_granted,
+            })
+        }
+
+        let login_datetime = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?;
+        let account_count: usize = account_count_str.parse().unwrap();
 
         end_active_request(Ok(Arc::new(ConnectResponse {
-            login_datetime: Instant::now(),
+            login_datetime,
             server_name,
             user_id,
-            account_count: 0,
+            account_count,
             account_infoes,
         })))
     }
@@ -93,7 +120,10 @@ fn on_receive_message(lparam: isize) -> std::result::Result<(), QvOpenApiError> 
         info!("CA_RECEIVEMESSAGE [{}] \"{}\"", message_code, message);
 
         if message_code != "00000" {
-            end_active_request(Err(QvOpenApiError::QvApiMessageError { message_code, message }))?;
+            end_active_request(Err(QvOpenApiError::QvApiMessageError {
+                message_code,
+                message,
+            }))?;
         }
     }
 
@@ -105,7 +135,7 @@ fn on_receive_complete(lparam: isize) -> std::result::Result<(), QvOpenApiError>
     unsafe {
         let tr_index = (*data_block).tr_index;
         info!("CA_RECEIVECOMPLETE (tr_index: {})", tr_index);
-        end_active_request(Ok(Arc::new(QueryResponse{})))?;
+        end_active_request(Ok(Arc::new(QueryResponse {})))?;
     }
     Ok(())
 }
@@ -115,7 +145,10 @@ fn on_receive_error(lparam: isize) -> std::result::Result<(), QvOpenApiError> {
     unsafe {
         let error_msg = from_cp949_ptr((*(*data_block).p_data).sz_data);
         info!("CA_RECEIVEERROR \"{}\"", error_msg);
-        end_active_request(Err(QvOpenApiError::QvApiMessageError { message_code: String::from("ERROR"), message: error_msg }))?;
+        end_active_request(Err(QvOpenApiError::QvApiMessageError {
+            message_code: String::from("ERROR"),
+            message: error_msg,
+        }))?;
     }
     Ok(())
 }

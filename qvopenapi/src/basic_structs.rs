@@ -1,4 +1,4 @@
-use std::ffi::{c_int, c_char};
+use std::ffi::{c_char, c_int};
 
 #[repr(C)]
 pub struct OutDataBlock<T> {

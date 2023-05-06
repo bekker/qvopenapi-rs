@@ -13,6 +13,7 @@ custom_error! {#[derive(Clone)] pub QvOpenApiError
     ReturnCodeError{ code: i32 } = "Return code {code}",
     NotConnectedError = "Not connected",
     QvApiMessageError{ message_code: String, message: String } = "[{message_code}] {message}",
+    ParseDateTimeError = "Failed to parse datetime",
 }
 
 impl From<libloading::Error> for QvOpenApiError {
@@ -24,5 +25,11 @@ impl From<libloading::Error> for QvOpenApiError {
 impl From<windows::core::Error> for QvOpenApiError {
     fn from(_e: windows::core::Error) -> Self {
         QvOpenApiError::WindowCreationError
+    }
+}
+
+impl From<chrono::ParseError> for QvOpenApiError {
+    fn from(_e: chrono::ParseError) -> Self {
+        QvOpenApiError::ParseDateTimeError
     }
 }

@@ -1,7 +1,7 @@
-use std::time::Instant;
+use chrono::{DateTime, FixedOffset};
 
 pub struct ConnectResponse {
-    pub login_datetime: Instant,
+    pub login_datetime: DateTime<FixedOffset>,
     pub server_name: String,
     pub user_id: String,
     pub account_count: usize,
@@ -21,5 +21,4 @@ pub struct AccountInfoResponse {
     pub bulk_granted: bool,
 }
 
-pub struct QueryResponse {
-}
+pub struct QueryResponse {}
