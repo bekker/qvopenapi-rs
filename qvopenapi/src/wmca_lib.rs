@@ -37,7 +37,7 @@ pub fn connect(
     cert_password: &str,
 ) -> Result<(), QvOpenApiError> {
     let hwnd = get_hwnd()?;
-    let msg = window_mgr::WM_WMCAEVENT;
+    let msg = message::WM_WMCAEVENT;
     let media_type = match account_type {
         AccountType::QV => 'P',
         AccountType::NAMUH => 'T',

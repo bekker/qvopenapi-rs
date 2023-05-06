@@ -1,10 +1,13 @@
 extern crate qvopenapi_sys;
 #[macro_use]
 extern crate lazy_static;
-mod command;
 mod error;
+mod message;
+mod request;
 mod window_mgr;
 mod wmca_lib;
+
+use std::sync::Arc;
 
 pub use error::*;
 pub use wmca_lib::{init, is_connected};
@@ -21,20 +24,20 @@ pub fn connect(
     password: &str,
     cert_password: &str,
 ) -> Result<(), QvOpenApiError> {
-    let cmd = command::ConnectCommand {
+    let cmd = request::ConnectRequest {
         account_type: account_type,
         id: id.to_string(),
         password: password.to_string(),
         cert_password: cert_password.to_string(),
     };
-    command::post_command(Box::new(cmd))
+    request::post_request(Arc::new(cmd))
 }
 
 pub fn query(tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
-    let cmd = command::QueryCommand {
+    let cmd = request::QueryRequest {
         tr_code: tr_code.to_string(),
         input: input.to_string(),
         account_index: account_index,
     };
-    command::post_command(Box::new(cmd))
+    request::post_request(Arc::new(cmd))
 }
