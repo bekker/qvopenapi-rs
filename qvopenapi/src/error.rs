@@ -4,9 +4,9 @@ extern crate libloading;
 use custom_error::custom_error;
 
 custom_error! {#[derive(Clone)] pub QvOpenApiError
-    WmcaDllNotLoadedError = "wmca.dll not loaded",
     WmcaDllLoadingError = "Failed to load wmca.dll",
     WindowCreationError = "Failed to create a window",
+    WindowAlreadyCreatedError = "Window already created",
     WindowNotCreatedError = "Window not created",
     WindowUnknownEventError{ wparam: usize } = "Unknown event {wparam}",
     EventUnimplementedError{ event: String } = "Unimplemented event {event}",

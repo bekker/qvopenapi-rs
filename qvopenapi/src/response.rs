@@ -8,6 +8,11 @@ pub struct ConnectResponse {
     pub account_infoes: Vec<AccountInfoResponse>,
 }
 
+pub struct MessageResponse {
+    pub msg_code: String,
+    pub msg: String,
+}
+
 pub struct AccountInfoResponse {
     pub account_no: String,
     pub account_name: String,

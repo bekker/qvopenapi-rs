@@ -5,25 +5,22 @@ use log::*;
 use once_cell::sync::OnceCell;
 use qvopenapi_sys::WmcaLib;
 use std::{ffi::CString, os::raw::c_char};
-use window_mgr::{get_hwnd, WINDOW_MANAGER_LOCK};
 
-// Static mutables need wrappers like OnceCell or RwLock to prevent concurrency problem
+// Static mutables need wrappers like OnceCell to prevent concurrency problem
 static WMCA_LIB_CELL: OnceCell<WmcaLib> = OnceCell::new();
 
 /**
- * DLL을 로드하고 이벤트를 자동으로 처리할 윈도우를 생성한다.
+ * DLL을 미리 로드
  */
 pub fn init() -> Result<(), QvOpenApiError> {
-    bind_lib()?;
-    window_mgr::run_window_async(&WINDOW_MANAGER_LOCK)?;
+    get_lib()?;
     Ok(())
 }
 
 pub fn assert_connected() -> Result<(), QvOpenApiError> {
-    match is_connected() {
-        Ok(true) => Ok(()),
-        Ok(false) => Err(QvOpenApiError::NotConnectedError),
-        Err(e) => Err(e),
+    match is_connected()? {
+        true => Ok(()),
+        false => Err(QvOpenApiError::NotConnectedError)
     }
 }
 
@@ -37,14 +34,18 @@ pub fn set_server(server: &str) -> Result<(), QvOpenApiError> {
     c_bool_to_result((get_lib()?.set_server)(server_cstr.as_ptr()))
 }
 
+pub fn set_port(port: i32) -> Result<(), QvOpenApiError> {
+    c_bool_to_result((get_lib()?.set_port)(port))
+}
+
 pub fn connect(
+    hwnd: isize,
     account_type: AccountType,
     id: &str,
     password: &str,
     cert_password: &str,
 ) -> Result<(), QvOpenApiError> {
-    let hwnd = get_hwnd()?;
-    let msg = message::WM_WMCAEVENT;
+    let msg = crate::WM_WMCAEVENT;
     let media_type = match account_type {
         AccountType::QV => 'P',
         AccountType::NAMUH => 'T',
@@ -74,8 +75,7 @@ pub fn connect(
     ))
 }
 
-pub fn query(tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
-    let hwnd = get_hwnd()?;
+pub fn query(hwnd: isize, tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
     let tr_id: i32 = 0;
     let tr_code_cstr = make_c_string(tr_code);
     let input_cstr = make_c_string(input);
@@ -105,16 +105,13 @@ fn make_c_string(original: &str) -> CString {
     CString::new(original).unwrap()
 }
 
-fn bind_lib() -> Result<(), QvOpenApiError> {
-    info!("Loading wmca.dll");
-    WMCA_LIB_CELL.set(qvopenapi_sys::bind_lib()?).unwrap();
-    info!("Loaded wmca.dll");
-    Ok(())
+fn get_lib() -> Result<&'static WmcaLib, QvOpenApiError> {
+    WMCA_LIB_CELL.get_or_try_init(bind_lib)
 }
 
-fn get_lib() -> Result<&'static WmcaLib, QvOpenApiError> {
-    match WMCA_LIB_CELL.get() {
-        Some(wmca_lib) => Ok(wmca_lib),
-        None => Err(QvOpenApiError::WmcaDllNotLoadedError),
-    }
+fn bind_lib() -> Result<WmcaLib, QvOpenApiError> {
+    info!("Loading wmca.dll");
+    let lib = qvopenapi_sys::bind_lib()?;
+    info!("Loaded wmca.dll");
+    Ok(lib)
 }

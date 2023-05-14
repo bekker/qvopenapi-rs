@@ -17,6 +17,8 @@ pub struct WindowManager {
     pub hwnd: Option<isize>,
     pub status: WindowManagerStatus,
     pub thread: Option<JoinHandle<std::result::Result<(), QvOpenApiError>>>,
+    pub on_destroy: fn(),
+    pub on_wmca_msg: fn(wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError>,
 }
 
 #[derive(PartialEq, Eq)]
@@ -45,6 +47,8 @@ impl WindowManager {
             hwnd: None,
             status: WindowManagerStatus::Init,
             thread: None,
+            on_destroy: || {},
+            on_wmca_msg: |_, _| { Ok(()) },
         }
     }
 }
@@ -53,8 +57,14 @@ pub fn run_window_async(
     manager_lock: &'static RwLock<WindowManager>,
 ) -> std::result::Result<(), QvOpenApiError> {
     {
-        let mut manager = manager_lock.write().unwrap();
-        manager.thread = Some(std::thread::spawn(move || run_window_sync(manager_lock)));
+        let reader = manager_lock.read().unwrap();
+        if reader.status != WindowManagerStatus::Init {
+            return Err(QvOpenApiError::WindowAlreadyCreatedError)
+        }
+    }
+    {
+        let mut writer = manager_lock.write().unwrap();
+        writer.thread = Some(std::thread::spawn(move || run_window_sync(manager_lock)));
     }
 
     while manager_lock.read().unwrap().status == WindowManagerStatus::Init {
@@ -78,7 +88,7 @@ pub fn run_window_sync(
         let mut manager = manager_lock.write().unwrap();
         if manager.status != WindowManagerStatus::Init {
             info!("WindowManagerStatus is not INIT");
-            return Err(QvOpenApiError::WindowCreationError);
+            return Err(QvOpenApiError::WindowAlreadyCreatedError);
         }
         let create_result = create_window();
 
@@ -98,6 +108,7 @@ pub fn run_window_sync(
         let mut manager = manager_lock.write().unwrap();
         manager.status = WindowManagerStatus::Destroyed;
         info!("Window destroyed");
+        (manager.on_destroy)();
     }
     Ok(())
 }
@@ -180,19 +191,11 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                 PostQuitMessage(0);
                 LRESULT(0)
             }
-            message::WM_WMCAEVENT => {
+            qvopenapi::WM_WMCAEVENT => {
                 debug!("WM_WMCAEVENT {}", wparam.0);
-                match message::on_wmca_msg(wparam.0, lparam.0) {
-                    Ok(()) => LRESULT(0),
-                    Err(e) => {
-                        error!("QvOpenApiError: {}", e);
-                        LRESULT(0)
-                    }
-                }
-            }
-            message::WM_CUSTOMEVENT => {
-                debug!("WM_CUSTOMEVENT {}", wparam.0);
-                match message::on_custom_msg(wparam.0, lparam.0) {
+                let reader = WINDOW_MANAGER_LOCK.read().unwrap();
+                let res = (reader.on_wmca_msg)(wparam.0, lparam.0);
+                match res {
                     Ok(()) => LRESULT(0),
                     Err(e) => {
                         error!("QvOpenApiError: {}", e);
