@@ -830,6 +830,7 @@ dependencies = [
  "chrono",
  "custom_error",
  "encoding",
+ "env_logger",
  "lazy_static",
  "libloading",
  "log",
@@ -841,19 +842,6 @@ dependencies = [
 
 [[package]]
 name = "qvopenapi-future"
-version = "0.1.0"
-dependencies = [
- "custom_error",
- "lazy_static",
- "libloading",
- "log",
- "qvopenapi",
- "strum_macros",
- "windows",
-]
-
-[[package]]
-name = "qvopenapi-helper"
 version = "0.1.0"
 dependencies = [
  "custom_error",

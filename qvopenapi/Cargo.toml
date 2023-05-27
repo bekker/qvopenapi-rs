@@ -17,5 +17,8 @@ strum_macros = "0.24.3"
 encoding = "0.2.33"
 chrono = { workspace = true }
 
+[dev-dependencies]
+env_logger = { workspace = true }
+
 [features]
 disable-unwind = ["qvopenapi-sys/disable-unwind"]

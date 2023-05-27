@@ -4,6 +4,7 @@ extern crate libloading;
 use custom_error::custom_error;
 
 custom_error! {#[derive(Clone)] pub QvOpenApiError
+    BadRequestError{ message: String } = "Bad request: {message}",
     WmcaDllLoadingError = "Failed to load wmca.dll",
     WindowCreationError = "Failed to create a window",
     WindowAlreadyCreatedError = "Window already created",

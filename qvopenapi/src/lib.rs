@@ -7,13 +7,16 @@ mod message;
 mod request;
 mod response;
 mod wmca_lib;
+mod window_mgr;
 
 use std::{collections::VecDeque, sync::Arc};
 
 pub use error::*;
+use log::debug;
 pub use request::*;
 pub use response::*;
 pub use wmca_lib::{init, is_connected, set_server, set_port};
+pub use window_mgr::WindowHelper;
 
 use windows::Win32::{UI::WindowsAndMessaging::{WM_USER, PostMessageA}, Foundation::{HWND, WPARAM, LPARAM}};
 
@@ -36,7 +39,7 @@ pub enum AccountType {
 }
 
 pub struct QvOpenApiClient {
-    hwnd: isize,
+    hwnd: Option<isize>,
     pub on_connect: fn(&ConnectResponse),
     pub on_disconnect: fn(),
     pub on_socket_error: fn(),
@@ -51,7 +54,7 @@ pub struct QvOpenApiClient {
 impl QvOpenApiClient {
     pub fn new() -> QvOpenApiClient {
         QvOpenApiClient {
-            hwnd: -1,
+            hwnd: None,
             on_connect: |_| {},
             on_disconnect: || {},
             on_socket_error: || {},
@@ -64,7 +67,30 @@ impl QvOpenApiClient {
         }
     }
 
-    pub fn parse_wmca_msg(&mut self, wparam: usize, lparam: isize) -> Result<(), QvOpenApiError> {
+    pub fn connect(
+        &mut self,
+        hwnd: isize,
+        req: ConnectRequest,
+    ) -> Result<(), QvOpenApiError> {
+        self.hwnd = Some(hwnd);
+        self.post_command(Arc::new(req))
+    }
+
+    pub fn query(&mut self, req: Arc<QueryRequest>) -> Result<(), QvOpenApiError> {
+        self.post_command(req)
+    }
+
+    fn post_command(&mut self, command: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
+        command.before_post()?;
+        self.request_queue.push_back(command);
+        post_message_to_window(self.hwnd.unwrap(), WM_WMCAEVENT, CA_CUSTOM_EXECUTE_POSTED_COMMAND, 0);
+        Ok(())
+    }
+}
+
+impl window_mgr::WmcaMessageHandleable for QvOpenApiClient {
+    fn on_wmca_msg(&mut self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+        debug!("on_wmca_msg {} {}", wparam, lparam);
         match u32::try_from(wparam).unwrap() {
             CA_CONNECTED => {
                 let res = message::parse_connect(lparam)?;
@@ -104,7 +130,7 @@ impl QvOpenApiClient {
             },
             CA_CUSTOM_EXECUTE_POSTED_COMMAND => {
                 while let Some(cmd) = self.request_queue.pop_front() {
-                    cmd.call_lib(self.hwnd)?;
+                    cmd.call_lib(self.hwnd.unwrap())?;
                 }
                 Ok(())
             }
@@ -114,34 +140,19 @@ impl QvOpenApiClient {
         }
     }
 
-    pub fn connect(
-        &mut self,
-        hwnd: isize,
-        req: Arc<ConnectRequest>,
-    ) -> Result<(), QvOpenApiError> {
-        self.hwnd = hwnd;
-        self.post_command(req)
-    }
-
-    pub fn query(&mut self, req: Arc<QueryRequest>) -> Result<(), QvOpenApiError> {
-        self.post_command(req)
-    }
-
-    fn post_command(&mut self, command: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
-        command.before_post()?;
-        self.request_queue.push_back(command);
-        post_message_to_window(self.hwnd, CA_CUSTOM_EXECUTE_POSTED_COMMAND, 0, 0);
-        Ok(())
+    fn on_destroy(&mut self) {
+        self.hwnd = None;
     }
 }
 
 fn post_message_to_window(
     hwnd: isize,
     msg: u32,
-    wparam: usize,
+    wparam: u32,
     lparam: isize,
 ) {
+    debug!("message {} posted to {}", msg, hwnd);
     unsafe {
-        PostMessageA(HWND(hwnd), msg, WPARAM(wparam), LPARAM(lparam));
+        PostMessageA(HWND(hwnd), msg, WPARAM(wparam as usize), LPARAM(lparam));
     }
 }

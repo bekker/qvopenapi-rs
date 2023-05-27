@@ -2,7 +2,7 @@ use crate::*;
 
 use wmca_lib;
 
-pub trait QvOpenApiRequest {
+pub trait QvOpenApiRequest: Send + Sync {
     fn before_post(&self) -> Result<(), QvOpenApiError>;
     fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError>;
 }

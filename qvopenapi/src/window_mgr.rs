@@ -2,7 +2,7 @@ use log::*;
 use std::{
     sync::{Mutex, RwLock},
     thread::JoinHandle,
-    time::Duration,
+    time::Duration, collections::HashMap,
 };
 use windows::{
     core::*, Win32::Foundation::*, Win32::Graphics::Gdi::*,
@@ -11,27 +11,57 @@ use windows::{
 
 use crate::*;
 
-pub static WINDOW_MANAGER_LOCK: RwLock<WindowManager> = RwLock::new(WindowManager::new());
+lazy_static! {
+    static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<Mutex<WmcaMessageHandler>>>> = RwLock::new(HashMap::new());
+}
 
-pub struct WindowManager {
+pub type WmcaMessageHandler = dyn WmcaMessageHandleable + Send;
+
+pub trait WmcaMessageHandleable {
+    fn on_destroy(&mut self);
+    fn on_wmca_msg(&mut self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError>;
+}
+
+pub struct WindowHelper {
     pub hwnd: Option<isize>,
-    pub status: WindowManagerStatus,
+    pub status: WindowStatus,
     pub thread: Option<JoinHandle<std::result::Result<(), QvOpenApiError>>>,
-    pub on_destroy: fn(),
-    pub on_wmca_msg: fn(wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError>,
 }
 
 #[derive(PartialEq, Eq)]
-pub enum WindowManagerStatus {
+pub enum WindowStatus {
     Init,
     Created,
     Destroyed,
     Error,
 }
 
-impl Drop for WindowManager {
+impl Drop for WindowHelper {
     fn drop(&mut self) {
-        if self.hwnd.is_some() && self.status != WindowManagerStatus::Destroyed {
+        self.destroy()
+    }
+}
+
+impl WindowHelper {
+    pub const fn new() -> Self {
+        WindowHelper {
+            hwnd: None,
+            status: WindowStatus::Init,
+            thread: None,
+        }
+    }
+
+    pub fn run(&mut self, message_handler: Arc<Mutex<WmcaMessageHandler>>) -> std::result::Result<isize, QvOpenApiError> {
+        let ret = Arc::new(RwLock::new(WindowHelper {
+            hwnd: None,
+            status: WindowStatus::Init,
+            thread: None,
+        }));
+        run_window_async(ret, message_handler)
+    }
+
+    pub fn destroy(&mut self) {
+        if self.hwnd.is_some() && self.status != WindowStatus::Destroyed {
             info!("Destroying window...");
             unsafe {
                 DestroyWindow(HWND(self.hwnd.unwrap()));
@@ -41,79 +71,83 @@ impl Drop for WindowManager {
     }
 }
 
-impl WindowManager {
-    pub const fn new() -> Self {
-        WindowManager {
-            hwnd: None,
-            status: WindowManagerStatus::Init,
-            thread: None,
-            on_destroy: || {},
-            on_wmca_msg: |_, _| { Ok(()) },
-        }
-    }
-}
-
-pub fn run_window_async(
-    manager_lock: &'static RwLock<WindowManager>,
-) -> std::result::Result<(), QvOpenApiError> {
+fn run_window_async(
+    manager_lock: Arc<RwLock<WindowHelper>>,
+    message_handler: Arc<Mutex<WmcaMessageHandler>>,
+) -> std::result::Result<isize, QvOpenApiError> {
     {
         let reader = manager_lock.read().unwrap();
-        if reader.status != WindowManagerStatus::Init {
+        if reader.status != WindowStatus::Init {
             return Err(QvOpenApiError::WindowAlreadyCreatedError)
         }
     }
     {
         let mut writer = manager_lock.write().unwrap();
-        writer.thread = Some(std::thread::spawn(move || run_window_sync(manager_lock)));
+        let cloned_lock = manager_lock.clone();
+        let cloned_handler = message_handler.clone();
+        writer.thread = Some(std::thread::spawn(move || run_window_sync(cloned_lock, cloned_handler)));
     }
-
-    while manager_lock.read().unwrap().status == WindowManagerStatus::Init {
+    
+    while manager_lock.read().unwrap().status == WindowStatus::Init {
         std::thread::sleep(Duration::from_millis(10))
     }
 
-    if manager_lock.read().unwrap().status == WindowManagerStatus::Created {
-        Ok(())
-    } else {
-        info!("WindowManagerStatus is not CREATED");
-        Err(QvOpenApiError::WindowCreationError)
+    {
+        let reader = manager_lock.read().unwrap();
+        if reader.status == WindowStatus::Created {
+            Ok(reader.hwnd.unwrap())
+        } else {
+            info!("WindowManagerStatus is not CREATED");
+            Err(QvOpenApiError::WindowCreationError)
+        }
     }
 }
 
-pub fn run_window_sync(
-    manager_lock: &'static RwLock<WindowManager>,
+fn run_window_sync(
+    manager_lock: Arc<RwLock<WindowHelper>>,
+    message_handler: Arc<Mutex<WmcaMessageHandler>>,
 ) -> std::result::Result<(), QvOpenApiError> {
     let hwnd;
     {
         info!("Window creating...");
         let mut manager = manager_lock.write().unwrap();
-        if manager.status != WindowManagerStatus::Init {
+        if manager.status != WindowStatus::Init {
             info!("WindowManagerStatus is not INIT");
             return Err(QvOpenApiError::WindowAlreadyCreatedError);
         }
         let create_result = create_window();
 
         if create_result.is_err() {
-            manager.status = WindowManagerStatus::Error;
+            manager.status = WindowStatus::Error;
             info!("WindowManagerStatus is ERROR");
             return Err(QvOpenApiError::WindowCreationError);
         }
 
         hwnd = create_result.unwrap().0;
         manager.hwnd = Some(hwnd);
-        manager.status = WindowManagerStatus::Created;
+        manager.status = WindowStatus::Created;
         info!("Window created (hwnd: {})", manager.hwnd.unwrap());
     }
+    {
+        let mut message_handler_map = MESSAGE_HANDLER_MAP_LOCK.write().unwrap();
+        message_handler_map.insert(hwnd, message_handler.clone());
+    }
+    info!("Starting message loop (hwnd: {})", hwnd);
     loop_message();
     {
+        let mut message_handler_map = MESSAGE_HANDLER_MAP_LOCK.write().unwrap();
+        message_handler_map.remove(&hwnd);
+    }
+    {
         let mut manager = manager_lock.write().unwrap();
-        manager.status = WindowManagerStatus::Destroyed;
+        manager.status = WindowStatus::Destroyed;
         info!("Window destroyed");
-        (manager.on_destroy)();
+        message_handler.lock().unwrap().on_destroy();
     }
     Ok(())
 }
 
-pub fn create_window() -> windows::core::Result<HWND> {
+fn create_window() -> windows::core::Result<HWND> {
     unsafe {
         let instance = GetModuleHandleA(None)?;
         debug_assert!(instance.0 != 0);
@@ -155,7 +189,7 @@ pub fn create_window() -> windows::core::Result<HWND> {
 /**
  * Must be called from the same thread as create_window()
  */
-pub fn loop_message() {
+fn loop_message() {
     unsafe {
         let mut message = MSG::default();
         while GetMessageW(&mut message, None, 0, 0).0 == 1 {
@@ -191,10 +225,11 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                 PostQuitMessage(0);
                 LRESULT(0)
             }
-            qvopenapi::WM_WMCAEVENT => {
+            WM_WMCAEVENT => {
                 debug!("WM_WMCAEVENT {}", wparam.0);
-                let reader = WINDOW_MANAGER_LOCK.read().unwrap();
-                let res = (reader.on_wmca_msg)(wparam.0, lparam.0);
+                let handler_map = MESSAGE_HANDLER_MAP_LOCK.read().unwrap();
+                let handler = handler_map.get(&hwnd.0).unwrap();
+                let res = handler.lock().unwrap().on_wmca_msg(wparam.0, lparam.0);
                 match res {
                     Ok(()) => LRESULT(0),
                     Err(e) => {
@@ -233,22 +268,4 @@ unsafe fn draw(hwnd: HWND) {
         DT_CENTER | DT_VCENTER | DT_SINGLELINE,
     );
     ReleaseDC(hwnd, dc);
-}
-
-pub fn get_hwnd() -> std::result::Result<isize, QvOpenApiError> {
-    match WINDOW_MANAGER_LOCK.read().unwrap().hwnd {
-        Some(hwnd) => Ok(hwnd),
-        None => Err(QvOpenApiError::WindowNotCreatedError),
-    }
-}
-
-pub fn post_message(
-    msg: u32,
-    wparam: usize,
-    lparam: isize,
-) -> std::result::Result<(), QvOpenApiError> {
-    unsafe {
-        PostMessageA(HWND(get_hwnd()?), msg, WPARAM(wparam), LPARAM(lparam));
-    }
-    Ok(())
 }
