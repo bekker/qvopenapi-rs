@@ -1,8 +1,9 @@
 use log::*;
 use std::{
+    collections::HashMap,
     sync::{Mutex, RwLock},
     thread::JoinHandle,
-    time::Duration, collections::HashMap,
+    time::Duration,
 };
 use windows::{
     core::*, Win32::Foundation::*, Win32::Graphics::Gdi::*,
@@ -12,14 +13,19 @@ use windows::{
 use crate::*;
 
 lazy_static! {
-    static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<Mutex<WmcaMessageHandler>>>> = RwLock::new(HashMap::new());
+    static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<WmcaMessageHandler>>> =
+        RwLock::new(HashMap::new());
 }
 
-pub type WmcaMessageHandler = dyn WmcaMessageHandleable + Send;
+pub type WmcaMessageHandler = dyn WmcaMessageHandleable + Send + Sync;
+
+pub trait WmcaMessageHandlerAcquirable {
+    fn get_handler(&self) -> Arc<WmcaMessageHandler>;
+}
 
 pub trait WmcaMessageHandleable {
-    fn on_destroy(&mut self);
-    fn on_wmca_msg(&mut self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError>;
+    fn on_destroy(&self);
+    fn on_wmca_msg(&self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError>;
 }
 
 pub struct WindowHelper {
@@ -51,13 +57,16 @@ impl WindowHelper {
         }
     }
 
-    pub fn run(&mut self, message_handler: Arc<Mutex<WmcaMessageHandler>>) -> std::result::Result<isize, QvOpenApiError> {
+    pub fn run(
+        &mut self,
+        client: &dyn WmcaMessageHandlerAcquirable,
+    ) -> std::result::Result<isize, QvOpenApiError> {
         let ret = Arc::new(RwLock::new(WindowHelper {
             hwnd: None,
             status: WindowStatus::Init,
             thread: None,
         }));
-        run_window_async(ret, message_handler)
+        run_window_async(ret, client.get_handler())
     }
 
     pub fn destroy(&mut self) {
@@ -73,21 +82,23 @@ impl WindowHelper {
 
 fn run_window_async(
     manager_lock: Arc<RwLock<WindowHelper>>,
-    message_handler: Arc<Mutex<WmcaMessageHandler>>,
+    message_handler: Arc<WmcaMessageHandler>,
 ) -> std::result::Result<isize, QvOpenApiError> {
     {
         let reader = manager_lock.read().unwrap();
         if reader.status != WindowStatus::Init {
-            return Err(QvOpenApiError::WindowAlreadyCreatedError)
+            return Err(QvOpenApiError::WindowAlreadyCreatedError);
         }
     }
     {
         let mut writer = manager_lock.write().unwrap();
         let cloned_lock = manager_lock.clone();
         let cloned_handler = message_handler.clone();
-        writer.thread = Some(std::thread::spawn(move || run_window_sync(cloned_lock, cloned_handler)));
+        writer.thread = Some(std::thread::spawn(move || {
+            run_window_sync(cloned_lock, cloned_handler)
+        }));
     }
-    
+
     while manager_lock.read().unwrap().status == WindowStatus::Init {
         std::thread::sleep(Duration::from_millis(10))
     }
@@ -95,6 +106,7 @@ fn run_window_async(
     {
         let reader = manager_lock.read().unwrap();
         if reader.status == WindowStatus::Created {
+            info!("Window created (hwnd: {})", reader.hwnd.unwrap());
             Ok(reader.hwnd.unwrap())
         } else {
             info!("WindowManagerStatus is not CREATED");
@@ -105,7 +117,7 @@ fn run_window_async(
 
 fn run_window_sync(
     manager_lock: Arc<RwLock<WindowHelper>>,
-    message_handler: Arc<Mutex<WmcaMessageHandler>>,
+    message_handler: Arc<WmcaMessageHandler>,
 ) -> std::result::Result<(), QvOpenApiError> {
     let hwnd;
     {
@@ -126,7 +138,6 @@ fn run_window_sync(
         hwnd = create_result.unwrap().0;
         manager.hwnd = Some(hwnd);
         manager.status = WindowStatus::Created;
-        info!("Window created (hwnd: {})", manager.hwnd.unwrap());
     }
     {
         let mut message_handler_map = MESSAGE_HANDLER_MAP_LOCK.write().unwrap();
@@ -142,7 +153,7 @@ fn run_window_sync(
         let mut manager = manager_lock.write().unwrap();
         manager.status = WindowStatus::Destroyed;
         info!("Window destroyed");
-        message_handler.lock().unwrap().on_destroy();
+        message_handler.on_destroy();
     }
     Ok(())
 }
@@ -229,7 +240,7 @@ extern "system" fn wndproc(hwnd: HWND, message: u32, wparam: WPARAM, lparam: LPA
                 debug!("WM_WMCAEVENT {}", wparam.0);
                 let handler_map = MESSAGE_HANDLER_MAP_LOCK.read().unwrap();
                 let handler = handler_map.get(&hwnd.0).unwrap();
-                let res = handler.lock().unwrap().on_wmca_msg(wparam.0, lparam.0);
+                let res = handler.on_wmca_msg(wparam.0, lparam.0);
                 match res {
                     Ok(()) => LRESULT(0),
                     Err(e) => {

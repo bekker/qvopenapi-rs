@@ -20,7 +20,7 @@ pub fn init() -> Result<(), QvOpenApiError> {
 pub fn assert_connected() -> Result<(), QvOpenApiError> {
     match is_connected()? {
         true => Ok(()),
-        false => Err(QvOpenApiError::NotConnectedError)
+        false => Err(QvOpenApiError::NotConnectedError),
     }
 }
 
@@ -75,7 +75,12 @@ pub fn connect(
     ))
 }
 
-pub fn query(hwnd: isize, tr_code: &str, input: &str, account_index: i32) -> Result<(), QvOpenApiError> {
+pub fn query(
+    hwnd: isize,
+    tr_code: &str,
+    input: &str,
+    account_index: i32,
+) -> Result<(), QvOpenApiError> {
     let tr_id: i32 = 0;
     let tr_code_cstr = make_c_string(tr_code);
     let input_cstr = make_c_string(input);

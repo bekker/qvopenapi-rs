@@ -17,7 +17,7 @@ pub struct ConnectRequest {
 impl QvOpenApiRequest for ConnectRequest {
     fn before_post(&self) -> Result<(), QvOpenApiError> {
         if wmca_lib::is_connected()? {
-            return Err(QvOpenApiError::AlreadyConnectedError)
+            return Err(QvOpenApiError::AlreadyConnectedError);
         }
 
         Ok(())

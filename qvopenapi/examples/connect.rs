@@ -1,7 +1,7 @@
-use std::{sync::{Mutex, Arc}, time::Duration};
+use std::time::Duration;
 
 use ::log::*;
-use qvopenapi::{QvOpenApiClient, WindowHelper, ConnectRequest, QvOpenApiError};
+use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper};
 
 fn main() {
     match do_run() {
@@ -24,28 +24,26 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     qvopenapi::init()?;
 
     let mut client = QvOpenApiClient::new();
-    client.on_connect = |res| {
+    client.on_connect(|res| {
         info!("Connected: account count {}", res.account_count);
-    };
-    let mut window = WindowHelper::new();
+    });
+    let mut window_helper = WindowHelper::new();
 
-    let client_lock = Arc::new(Mutex::new(client));
-    let hwnd = window.run(client_lock.clone())?;
-    {
-        let mut client = client_lock.lock().unwrap();
-        client.connect(hwnd, ConnectRequest {
-            account_type: qvopenapi::AccountType::NAMUH,
-            id,
-            password,
-            cert_password,
-        })?;
-    }
+    let hwnd = window_helper.run(&client)?;
+    client.connect(
+        hwnd,
+        qvopenapi::AccountType::NAMUH,
+        id,
+        password,
+        cert_password,
+    )?;
     std::thread::sleep(Duration::from_millis(3000));
 
     Ok(())
 }
 
 fn find_env(key: &str) -> Result<String, qvopenapi::QvOpenApiError> {
-    std::env::var(key)
-        .map_err(|_| QvOpenApiError::BadRequestError { message: format!("env {} not found", key) })
+    std::env::var(key).map_err(|_| QvOpenApiError::BadRequestError {
+        message: format!("env {} not found", key),
+    })
 }

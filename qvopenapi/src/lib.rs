@@ -6,19 +6,25 @@ mod error;
 mod message;
 mod request;
 mod response;
-mod wmca_lib;
 mod window_mgr;
+mod wmca_lib;
 
-use std::{collections::VecDeque, sync::Arc};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex, RwLock},
+};
 
 pub use error::*;
 use log::debug;
 pub use request::*;
 pub use response::*;
-pub use wmca_lib::{init, is_connected, set_server, set_port};
 pub use window_mgr::WindowHelper;
+pub use wmca_lib::{init, is_connected, set_port, set_server};
 
-use windows::Win32::{UI::WindowsAndMessaging::{WM_USER, PostMessageA}, Foundation::{HWND, WPARAM, LPARAM}};
+use windows::Win32::{
+    Foundation::{HWND, LPARAM, WPARAM},
+    UI::WindowsAndMessaging::{PostMessageA, WM_USER},
+};
 
 pub const WM_WMCAEVENT: u32 = WM_USER + 8400;
 
@@ -39,118 +45,183 @@ pub enum AccountType {
 }
 
 pub struct QvOpenApiClient {
-    hwnd: Option<isize>,
-    pub on_connect: fn(&ConnectResponse),
-    pub on_disconnect: fn(),
-    pub on_socket_error: fn(),
-    pub on_data: fn(),
-    pub on_sise: fn(),
-    pub on_message: fn(&MessageResponse),
-    pub on_complete: fn(tr_index: i32),
-    pub on_error: fn(error_msg: &str),
-    request_queue: VecDeque<Arc<dyn QvOpenApiRequest>>,
+    inner: Arc<QvOpenApiClientInner>,
+}
+
+impl window_mgr::WmcaMessageHandlerAcquirable for QvOpenApiClient {
+    fn get_handler(&self) -> Arc<window_mgr::WmcaMessageHandler> {
+        self.inner.clone()
+    }
+}
+
+struct QvOpenApiClientInner {
+    hwnd_lock: RwLock<Option<isize>>,
+    message_handler: RwLock<QvOpenApiClientMessageHandler>,
+    request_queue_lock: Mutex<VecDeque<Arc<dyn QvOpenApiRequest>>>,
+}
+
+struct QvOpenApiClientMessageHandler {
+    on_connect: fn(&ConnectResponse),
+    on_disconnect: fn(),
+    on_socket_error: fn(),
+    on_data: fn(),
+    on_sise: fn(),
+    on_message: fn(&MessageResponse),
+    on_complete: fn(tr_index: i32),
+    on_error: fn(error_msg: &str),
 }
 
 impl QvOpenApiClient {
     pub fn new() -> QvOpenApiClient {
         QvOpenApiClient {
-            hwnd: None,
-            on_connect: |_| {},
-            on_disconnect: || {},
-            on_socket_error: || {},
-            on_data: || {},
-            on_sise: || {},
-            on_message: |_| {},
-            on_complete: |_| {},
-            on_error: |_| {},
-            request_queue: VecDeque::new(),
-        }
-    }
-
-    pub fn connect(
-        &mut self,
-        hwnd: isize,
-        req: ConnectRequest,
-    ) -> Result<(), QvOpenApiError> {
-        self.hwnd = Some(hwnd);
-        self.post_command(Arc::new(req))
-    }
-
-    pub fn query(&mut self, req: Arc<QueryRequest>) -> Result<(), QvOpenApiError> {
-        self.post_command(req)
-    }
-
-    fn post_command(&mut self, command: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
-        command.before_post()?;
-        self.request_queue.push_back(command);
-        post_message_to_window(self.hwnd.unwrap(), WM_WMCAEVENT, CA_CUSTOM_EXECUTE_POSTED_COMMAND, 0);
-        Ok(())
-    }
-}
-
-impl window_mgr::WmcaMessageHandleable for QvOpenApiClient {
-    fn on_wmca_msg(&mut self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
-        debug!("on_wmca_msg {} {}", wparam, lparam);
-        match u32::try_from(wparam).unwrap() {
-            CA_CONNECTED => {
-                let res = message::parse_connect(lparam)?;
-                (self.on_connect)(&res);
-                Ok(())
-            },
-            CA_DISCONNECTED => {
-                (self.on_disconnect)();
-                Ok(())
-            },
-            CA_SOCKETERROR => {
-                (self.on_socket_error)();
-                Ok(())
-            },
-            CA_RECEIVEDATA => {
-                (self.on_data)();
-                Ok(())
-            },
-            CA_RECEIVESISE => {
-                (self.on_sise)();
-                Ok(())
-            },
-            CA_RECEIVEMESSAGE => {
-                let res = message::parse_message(lparam)?;
-                (self.on_message)(&res);
-                Ok(())
-            },
-            CA_RECEIVECOMPLETE => {
-                let res = message::parse_complete(lparam)?;
-                (self.on_complete)(res);
-                Ok(())
-            },
-            CA_RECEIVEERROR => {
-                let res = message::parse_error(lparam)?;
-                (self.on_error)(res.as_str());
-                Ok(())
-            },
-            CA_CUSTOM_EXECUTE_POSTED_COMMAND => {
-                while let Some(cmd) = self.request_queue.pop_front() {
-                    cmd.call_lib(self.hwnd.unwrap())?;
-                }
-                Ok(())
-            }
-            _ => Err(QvOpenApiError::WindowUnknownEventError {
-                wparam,
+            inner: Arc::new(QvOpenApiClientInner {
+                hwnd_lock: RwLock::new(None),
+                message_handler: RwLock::new(QvOpenApiClientMessageHandler {
+                    on_connect: |_| {},
+                    on_disconnect: || {},
+                    on_socket_error: || {},
+                    on_data: || {},
+                    on_sise: || {},
+                    on_message: |_| {},
+                    on_complete: |_| {},
+                    on_error: |_| {},
+                }),
+                request_queue_lock: Mutex::new(VecDeque::new()),
             }),
         }
     }
 
-    fn on_destroy(&mut self) {
-        self.hwnd = None;
+    pub fn on_connect(&mut self, callback: fn(&ConnectResponse)) {
+        self.inner.message_handler.write().unwrap().on_connect = callback;
+    }
+
+    pub fn on_disconnect(&mut self, callback: fn()) {
+        self.inner.message_handler.write().unwrap().on_disconnect = callback;
+    }
+
+    pub fn on_socket_error(&mut self, callback: fn()) {
+        self.inner.message_handler.write().unwrap().on_socket_error = callback;
+    }
+
+    pub fn on_data(&mut self, callback: fn()) {
+        self.inner.message_handler.write().unwrap().on_data = callback;
+    }
+
+    pub fn on_sise(&mut self, callback: fn()) {
+        self.inner.message_handler.write().unwrap().on_sise = callback;
+    }
+
+    pub fn on_message(&mut self, callback: fn(&MessageResponse)) {
+        self.inner.message_handler.write().unwrap().on_message = callback;
+    }
+
+    pub fn on_complete(&mut self, callback: fn(i32)) {
+        self.inner.message_handler.write().unwrap().on_complete = callback;
+    }
+
+    pub fn on_error(&mut self, callback: fn(&str)) {
+        self.inner.message_handler.write().unwrap().on_error = callback;
+    }
+
+    pub fn connect(
+        &self,
+        new_hwnd: isize,
+        account_type: AccountType,
+        id: String,
+        password: String,
+        cert_password: String,
+    ) -> Result<(), QvOpenApiError> {
+        {
+            let mut hwnd = self.inner.hwnd_lock.write().unwrap();
+            *hwnd = Some(new_hwnd);
+        }
+        self.post_command(Arc::new(ConnectRequest {
+            account_type,
+            id,
+            password,
+            cert_password,
+        }))
+    }
+
+    pub fn query(&self, req: Arc<QueryRequest>) -> Result<(), QvOpenApiError> {
+        self.post_command(req)
+    }
+
+    fn post_command(&self, command: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
+        command.before_post()?;
+        let hwnd = self.inner.hwnd_lock.read().unwrap();
+        let mut request_queue = self.inner.request_queue_lock.lock().unwrap();
+        request_queue.push_back(command);
+        post_message_to_window(
+            hwnd.unwrap(),
+            WM_WMCAEVENT,
+            CA_CUSTOM_EXECUTE_POSTED_COMMAND,
+            0,
+        );
+        Ok(())
     }
 }
 
-fn post_message_to_window(
-    hwnd: isize,
-    msg: u32,
-    wparam: u32,
-    lparam: isize,
-) {
+impl window_mgr::WmcaMessageHandleable for QvOpenApiClientInner {
+    fn on_wmca_msg(&self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+        debug!("on_wmca_msg {} {}", wparam, lparam);
+        let handler = self.message_handler.read().unwrap();
+        match u32::try_from(wparam).unwrap() {
+            CA_CONNECTED => {
+                let res = message::parse_connect(lparam)?;
+                (handler.on_connect)(&res);
+                Ok(())
+            }
+            CA_DISCONNECTED => {
+                (handler.on_disconnect)();
+                Ok(())
+            }
+            CA_SOCKETERROR => {
+                (handler.on_socket_error)();
+                Ok(())
+            }
+            CA_RECEIVEDATA => {
+                (handler.on_data)();
+                Ok(())
+            }
+            CA_RECEIVESISE => {
+                (handler.on_sise)();
+                Ok(())
+            }
+            CA_RECEIVEMESSAGE => {
+                let res = message::parse_message(lparam)?;
+                (handler.on_message)(&res);
+                Ok(())
+            }
+            CA_RECEIVECOMPLETE => {
+                let res = message::parse_complete(lparam)?;
+                (handler.on_complete)(res);
+                Ok(())
+            }
+            CA_RECEIVEERROR => {
+                let res = message::parse_error(lparam)?;
+                (handler.on_error)(res.as_str());
+                Ok(())
+            }
+            CA_CUSTOM_EXECUTE_POSTED_COMMAND => {
+                let mut request_queue = self.request_queue_lock.lock().unwrap();
+                let hwnd = self.hwnd_lock.read().unwrap();
+                while let Some(cmd) = request_queue.pop_front() {
+                    cmd.call_lib(hwnd.unwrap())?;
+                }
+                Ok(())
+            }
+            _ => Err(QvOpenApiError::WindowUnknownEventError { wparam }),
+        }
+    }
+
+    fn on_destroy(&self) {
+        let mut hwnd = self.hwnd_lock.write().unwrap();
+        *hwnd = None;
+    }
+}
+
+fn post_message_to_window(hwnd: isize, msg: u32, wparam: u32, lparam: isize) {
     debug!("message {} posted to {}", msg, hwnd);
     unsafe {
         PostMessageA(HWND(hwnd), msg, WPARAM(wparam as usize), LPARAM(lparam));

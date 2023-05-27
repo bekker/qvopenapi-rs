@@ -7,7 +7,6 @@ use crate::basic_structs::*;
 use crate::error::*;
 use encoding::{all::WINDOWS_949, DecoderTrap, Encoding};
 
-
 lazy_static! {
     static ref SEOUL_TZ: FixedOffset = FixedOffset::east_opt(9 * 3600).unwrap();
 }
@@ -28,24 +27,27 @@ pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOp
 
         let account_count: usize = account_count_str.parse().unwrap();
 
-        let account_infoes = (*login_info).account_infoes.iter()
-        .take(account_count)
-        .map(|account_info_raw| {
-            let account_no = from_cp949(&account_info_raw.account_no);
-            let account_name = String::from(from_cp949(&account_info_raw.account_name).trim());
-            let act_pdt_cdz3 = from_cp949(&account_info_raw.act_pdt_cdz3);
-            let amn_tab_cdz4 = from_cp949(&account_info_raw.amn_tab_cdz4);
-            let expr_datez8 = String::from(from_cp949(&account_info_raw.expr_datez8).trim());
-            let bulk_granted = account_info_raw.granted == 'G' as i8;
-            AccountInfoResponse {
-                account_no,
-                account_name,
-                act_pdt_cdz3,
-                amn_tab_cdz4,
-                expr_datez8,
-                bulk_granted,
-            }
-        }).collect();
+        let account_infoes = (*login_info)
+            .account_infoes
+            .iter()
+            .take(account_count)
+            .map(|account_info_raw| {
+                let account_no = from_cp949(&account_info_raw.account_no);
+                let account_name = String::from(from_cp949(&account_info_raw.account_name).trim());
+                let act_pdt_cdz3 = from_cp949(&account_info_raw.act_pdt_cdz3);
+                let amn_tab_cdz4 = from_cp949(&account_info_raw.amn_tab_cdz4);
+                let expr_datez8 = String::from(from_cp949(&account_info_raw.expr_datez8).trim());
+                let bulk_granted = account_info_raw.granted == 'G' as i8;
+                AccountInfoResponse {
+                    account_no,
+                    account_name,
+                    act_pdt_cdz3,
+                    amn_tab_cdz4,
+                    expr_datez8,
+                    bulk_granted,
+                }
+            })
+            .collect();
 
         let login_datetime = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?;
 
@@ -66,12 +68,12 @@ pub fn parse_message(lparam: isize) -> std::result::Result<MessageResponse, QvOp
         let msg_header = (*(*data_block).p_data).sz_data;
         let msg_code = from_cp949(&(*msg_header).message_code);
         let msg = from_cp949(&(*msg_header).message);
-        info!("CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"", tr_index, msg_code, msg);
+        info!(
+            "CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
+            tr_index, msg_code, msg
+        );
 
-        Ok(MessageResponse{
-            msg_code,
-            msg
-        })
+        Ok(MessageResponse { msg_code, msg })
     }
 }
 
