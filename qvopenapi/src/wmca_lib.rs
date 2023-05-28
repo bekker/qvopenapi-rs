@@ -4,7 +4,11 @@ use crate::*;
 use log::*;
 use once_cell::sync::OnceCell;
 use qvopenapi_sys::WmcaLib;
-use std::{ffi::CString, os::raw::c_char};
+use std::{
+    ffi::{c_int, CString},
+    mem::size_of,
+    os::raw::c_char,
+};
 
 // Static mutables need wrappers like OnceCell to prevent concurrency problem
 static WMCA_LIB_CELL: OnceCell<WmcaLib> = OnceCell::new();
@@ -75,25 +79,37 @@ pub fn connect(
     ))
 }
 
-pub fn query(
+pub fn query<T>(
     hwnd: isize,
+    tr_index: i32,
     tr_code: &str,
-    input: &str,
+    input: &T,
     account_index: i32,
 ) -> Result<(), QvOpenApiError> {
-    let tr_id: i32 = 0;
     let tr_code_cstr = make_c_string(tr_code);
-    let input_cstr = make_c_string(input);
 
     debug!("query ({})", tr_code);
 
     c_bool_to_result((get_lib()?.query)(
         hwnd,
-        tr_id,
+        tr_index,
         tr_code_cstr.as_ptr(),
-        input_cstr.as_ptr(),
-        input.len() as i32,
+        input as *const T as *const c_char,
+        size_of::<T>() as c_int,
         account_index,
+    ))
+}
+
+pub fn set_account_index_pwd<T>(
+    input: &mut T,
+    account_index: i32,
+    password: &str,
+) -> Result<(), QvOpenApiError> {
+    let password_cstr = make_c_string(password);
+    c_bool_to_result((get_lib()?.set_account_index_pwd)(
+        input as *const T as *const c_char,
+        account_index,
+        password_cstr.as_ptr(),
     ))
 }
 

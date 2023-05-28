@@ -33,12 +33,14 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     client.connect(
         hwnd,
         qvopenapi::AccountType::NAMUH,
-        id,
-        password,
-        cert_password,
+        id.as_str(),
+        password.as_str(),
+        cert_password.as_str(),
     )?;
     std::thread::sleep(Duration::from_millis(3000));
 
+    client.get_balance(3, 1, password.as_str(), '1')?;
+    std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }
 

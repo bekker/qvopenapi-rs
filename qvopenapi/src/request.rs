@@ -34,18 +34,25 @@ impl QvOpenApiRequest for ConnectRequest {
     }
 }
 
-pub struct QueryRequest {
-    pub tr_code: String,
-    pub input: String,
+pub struct QueryRequest<T> {
+    pub tr_index: i32,
+    pub tr_code: &'static str,
+    pub input: Box<T>,
     pub account_index: i32,
 }
 
-impl QvOpenApiRequest for QueryRequest {
+impl<T: Send + Sync> QvOpenApiRequest for QueryRequest<T> {
     fn before_post(&self) -> Result<(), QvOpenApiError> {
         wmca_lib::assert_connected()
     }
 
     fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError> {
-        wmca_lib::query(hwnd, &self.tr_code, &self.input, self.account_index)
+        wmca_lib::query(
+            hwnd,
+            self.tr_index,
+            self.tr_code,
+            self.input.as_ref(),
+            self.account_index,
+        )
     }
 }

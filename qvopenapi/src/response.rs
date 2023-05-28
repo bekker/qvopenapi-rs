@@ -1,3 +1,5 @@
+use std::ffi::c_char;
+
 use chrono::{DateTime, FixedOffset};
 
 pub struct ConnectResponse {
@@ -9,6 +11,7 @@ pub struct ConnectResponse {
 }
 
 pub struct MessageResponse {
+    pub tr_index: i32,
     pub msg_code: String,
     pub msg: String,
 }
@@ -26,4 +29,14 @@ pub struct AccountInfoResponse {
     pub bulk_granted: bool,
 }
 
-pub struct QueryResponse {}
+pub struct DataResponse {
+    pub tr_index: i32,
+    pub block_name: String,
+    pub block_data: *const c_char,
+    pub block_len: i32,
+}
+
+pub struct ErrorResponse {
+    pub tr_index: i32,
+    pub error_msg: String,
+}

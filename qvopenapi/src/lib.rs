@@ -4,6 +4,7 @@ extern crate lazy_static;
 mod basic_structs;
 mod error;
 mod message;
+mod query;
 mod request;
 mod response;
 mod window_mgr;
@@ -11,11 +12,13 @@ mod wmca_lib;
 
 use std::{
     collections::VecDeque,
+    ffi::c_char,
     sync::{Arc, Mutex, RwLock},
 };
 
 pub use error::*;
-use log::debug;
+use log::{debug, info};
+use query::*;
 pub use request::*;
 pub use response::*;
 pub use window_mgr::WindowHelper;
@@ -64,11 +67,11 @@ struct QvOpenApiClientMessageHandler {
     on_connect: fn(&ConnectResponse),
     on_disconnect: fn(),
     on_socket_error: fn(),
-    on_data: fn(),
-    on_sise: fn(),
+    on_data: fn(&DataResponse),
+    on_sise: fn(&DataResponse),
     on_message: fn(&MessageResponse),
     on_complete: fn(tr_index: i32),
-    on_error: fn(error_msg: &str),
+    on_error: fn(&ErrorResponse),
 }
 
 impl QvOpenApiClient {
@@ -80,8 +83,8 @@ impl QvOpenApiClient {
                     on_connect: |_| {},
                     on_disconnect: || {},
                     on_socket_error: || {},
-                    on_data: || {},
-                    on_sise: || {},
+                    on_data: |_| {},
+                    on_sise: |_| {},
                     on_message: |_| {},
                     on_complete: |_| {},
                     on_error: |_| {},
@@ -103,11 +106,11 @@ impl QvOpenApiClient {
         self.inner.message_handler.write().unwrap().on_socket_error = callback;
     }
 
-    pub fn on_data(&mut self, callback: fn()) {
+    pub fn on_data(&mut self, callback: fn(&DataResponse)) {
         self.inner.message_handler.write().unwrap().on_data = callback;
     }
 
-    pub fn on_sise(&mut self, callback: fn()) {
+    pub fn on_sise(&mut self, callback: fn(&DataResponse)) {
         self.inner.message_handler.write().unwrap().on_sise = callback;
     }
 
@@ -119,7 +122,7 @@ impl QvOpenApiClient {
         self.inner.message_handler.write().unwrap().on_complete = callback;
     }
 
-    pub fn on_error(&mut self, callback: fn(&str)) {
+    pub fn on_error(&mut self, callback: fn(&ErrorResponse)) {
         self.inner.message_handler.write().unwrap().on_error = callback;
     }
 
@@ -127,9 +130,9 @@ impl QvOpenApiClient {
         &self,
         new_hwnd: isize,
         account_type: AccountType,
-        id: String,
-        password: String,
-        cert_password: String,
+        id: &str,
+        password: &str,
+        cert_password: &str,
     ) -> Result<(), QvOpenApiError> {
         {
             let mut hwnd = self.inner.hwnd_lock.write().unwrap();
@@ -137,14 +140,27 @@ impl QvOpenApiClient {
         }
         self.post_command(Arc::new(ConnectRequest {
             account_type,
-            id,
-            password,
-            cert_password,
+            id: id.into(),
+            password: password.into(),
+            cert_password: cert_password.into(),
         }))
     }
 
-    pub fn query(&self, req: Arc<QueryRequest>) -> Result<(), QvOpenApiError> {
-        self.post_command(req)
+    pub fn get_balance(
+        &self,
+        tr_index: i32,
+        account_index: i32,
+        password: &str,
+        balance_type: char,
+    ) -> Result<(), QvOpenApiError> {
+        self.query(make_c8201_request(tr_index, account_index, password, balance_type)?)
+    }
+
+    pub fn query<T: Send + Sync + 'static>(
+        &self,
+        req: QueryRequest<T>
+    ) -> Result<(), QvOpenApiError> {
+        self.post_command(Arc::new(req))
     }
 
     fn post_command(&self, command: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
@@ -169,38 +185,64 @@ impl window_mgr::WmcaMessageHandleable for QvOpenApiClientInner {
         match u32::try_from(wparam).unwrap() {
             CA_CONNECTED => {
                 let res = message::parse_connect(lparam)?;
+                info!(
+                    "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
+                    res.login_datetime, res.server_name, res.user_id, res.account_count
+                );
                 (handler.on_connect)(&res);
                 Ok(())
             }
             CA_DISCONNECTED => {
+                info!(
+                    "CA_DISCONNECTED"
+                );
                 (handler.on_disconnect)();
                 Ok(())
             }
             CA_SOCKETERROR => {
+                info!(
+                    "CA_SOCKETERROR"
+                );
                 (handler.on_socket_error)();
                 Ok(())
             }
             CA_RECEIVEDATA => {
-                (handler.on_data)();
+                let res = message::parse_data(lparam)?;
+                info!(
+                    "CA_RECEIVEDATA [TR{}] \"{}\" {}",
+                    res.tr_index, res.block_name, res.block_len
+                );
+                (handler.on_data)(&res);
                 Ok(())
             }
             CA_RECEIVESISE => {
-                (handler.on_sise)();
+                let res = message::parse_sise(lparam)?;
+                info!(
+                    "CA_RECEIVESISE [TR{}] \"{}\" {}",
+                    res.tr_index, res.block_name, res.block_len
+                );
+                (handler.on_sise)(&res);
                 Ok(())
             }
             CA_RECEIVEMESSAGE => {
                 let res = message::parse_message(lparam)?;
+                info!(
+                    "CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
+                    res.tr_index, res.msg_code, res.msg
+                );
                 (handler.on_message)(&res);
                 Ok(())
             }
             CA_RECEIVECOMPLETE => {
                 let res = message::parse_complete(lparam)?;
+                info!("CA_RECEIVECOMPLETE [TR{}]", res);
                 (handler.on_complete)(res);
                 Ok(())
             }
             CA_RECEIVEERROR => {
                 let res = message::parse_error(lparam)?;
-                (handler.on_error)(res.as_str());
+                info!("CA_RECEIVEERROR [TR{}] \"{}\"", res.tr_index, res.error_msg);
+                (handler.on_error)(&res);
                 Ok(())
             }
             CA_CUSTOM_EXECUTE_POSTED_COMMAND => {
