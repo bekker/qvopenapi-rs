@@ -2,6 +2,7 @@
 
 members = [
     "qvopenapi",
+    "qvopenapi-macro",
     "qvopenapi-future",
     "qvopenapi-http",
     "qvopenapi-sys",
@@ -25,3 +26,5 @@ windows-sys = {version = "0.48", features = [
 custom_error = "1.9.2"
 serde = { version = "1.0.162", features = ["derive"] }
 serde_json = "1.0.96"
+strum = "0.24.1"
+strum_macros = "0.24.1"

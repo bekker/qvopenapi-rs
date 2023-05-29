@@ -16,6 +16,7 @@ custom_error! {#[derive(Clone)] pub QvOpenApiError
     QvApiMessageError{ message_code: String, message: String } = "[{message_code}] {message}",
     ParseDateTimeError = "Failed to parse datetime",
     AlreadyConnectedError = "Already connected",
+    UnimplementedBlockError{ block_name: String } = "Unimplemented block {block_name}",
 }
 
 impl From<libloading::Error> for QvOpenApiError {

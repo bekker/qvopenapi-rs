@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use ::log::*;
-use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper};
+use qvopenapi::{SimpleQvOpenApiClient, QvOpenApiError, WindowHelper};
 
 fn main() {
     match do_run() {
@@ -23,13 +23,13 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
 
     qvopenapi::init()?;
 
-    let mut client = QvOpenApiClient::new();
-    client.on_connect(|res| {
-        info!("Connected: account count {}", res.account_count);
-    });
+    let mut client = SimpleQvOpenApiClient::new();
     let mut window_helper = WindowHelper::new();
 
     let hwnd = window_helper.run(&client)?;
+    client.on_connect(|res| {
+        info!("Connected: account count {}", res.account_count);
+    });
     client.connect(
         hwnd,
         qvopenapi::AccountType::NAMUH,
@@ -39,7 +39,23 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     )?;
     std::thread::sleep(Duration::from_millis(3000));
 
-    client.get_balance(3, 1, password.as_str(), '1')?;
+    const BALANCE_TR_INDEX: i32 = 3;
+    client.on_data(|res| {
+        if res.tr_index == BALANCE_TR_INDEX {
+            match res.block_name.as_str() {
+                BLOCK_NAME_C8201_OUT => {
+                    
+                }
+                BLOCK_NAME_C8201_OUT1 => {
+
+                }
+                _ => {
+                    error!("Unknown block name {}", res.block_name)
+                }
+            }
+        }
+    });
+    client.get_balance(BALANCE_TR_INDEX, 1, password.as_str(), '1')?;
     std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }

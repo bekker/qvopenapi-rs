@@ -1,6 +1,7 @@
 use crate::*;
 use chrono::{FixedOffset, TimeZone};
 use log::*;
+use std::any::Any;
 use std::ffi::{c_char, CStr};
 
 use crate::basic_structs::*;
@@ -62,7 +63,7 @@ pub fn parse_message(lparam: isize) -> std::result::Result<MessageResponse, QvOp
         let tr_index = (*data_block).tr_index;
         let msg_header = (*(*data_block).p_data).sz_data;
         let msg_code = from_cp949(&(*msg_header).message_code);
-        let msg = from_cp949(&(*msg_header).message);
+        let msg = from_cp949(&(*msg_header).message).trim().into();
 
         Ok(MessageResponse {
             tr_index,
@@ -83,8 +84,8 @@ pub fn parse_data(lparam: isize) -> std::result::Result<DataResponse, QvOpenApiE
 
         Ok(DataResponse {
             tr_index,
+            block_data: parse_block(block_name.as_str(), block_data, block_len)?,
             block_name,
-            block_data,
             block_len,
         })
     }
@@ -101,10 +102,24 @@ pub fn parse_sise(lparam: isize) -> std::result::Result<DataResponse, QvOpenApiE
 
         Ok(DataResponse {
             tr_index,
+            block_data: parse_block(block_name.as_str(), block_data, block_len)?,
             block_name,
-            block_data,
             block_len,
         })
+    }
+}
+
+fn parse_block(block_name: &str, block_data: *const c_char, block_len: i32) -> Result<Box<dyn Any>, QvOpenApiError> {
+    match block_name {
+        BLOCK_NAME_C8201_OUT => {
+            Ok(Box::new(parse_c8201_response(block_data, block_len)?))
+        }
+        BLOCK_NAME_C8201_OUT1 => {
+            Ok(Box::new(parse_c8201_response1(block_data, block_len)?))
+        }
+        _ => {
+            Err(QvOpenApiError::UnimplementedBlockError { block_name: block_name.into() })
+        }
     }
 }
 
@@ -121,7 +136,7 @@ pub fn parse_error(lparam: isize) -> std::result::Result<ErrorResponse, QvOpenAp
     let data_block = lparam as *const OutDataBlock<c_char>;
     unsafe {
         let tr_index = (*data_block).tr_index;
-        let error_msg = from_cp949_ptr((*(*data_block).p_data).sz_data);
+        let error_msg = from_cp949_ptr((*(*data_block).p_data).sz_data).trim().into();
         Ok(ErrorResponse {
             tr_index,
             error_msg,

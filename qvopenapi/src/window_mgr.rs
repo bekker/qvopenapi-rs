@@ -10,22 +10,11 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
 
-use crate::*;
+use crate::{*, client::{QvOpenApiClientMessageHandler, QvOpenApiClient}};
 
 lazy_static! {
-    static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<WmcaMessageHandler>>> =
+    static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<QvOpenApiClientMessageHandler>>> =
         RwLock::new(HashMap::new());
-}
-
-pub type WmcaMessageHandler = dyn WmcaMessageHandleable + Send + Sync;
-
-pub trait WmcaMessageHandlerAcquirable {
-    fn get_handler(&self) -> Arc<WmcaMessageHandler>;
-}
-
-pub trait WmcaMessageHandleable {
-    fn on_destroy(&self);
-    fn on_wmca_msg(&self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError>;
 }
 
 pub struct WindowHelper {
@@ -59,14 +48,14 @@ impl WindowHelper {
 
     pub fn run(
         &mut self,
-        client: &dyn WmcaMessageHandlerAcquirable,
+        client: &dyn QvOpenApiClient,
     ) -> std::result::Result<isize, QvOpenApiError> {
         let ret = Arc::new(RwLock::new(WindowHelper {
             hwnd: None,
             status: WindowStatus::Init,
             thread: None,
         }));
-        run_window_async(ret, client.get_handler())
+        run_window_async(ret, client.into())
     }
 
     pub fn destroy(&mut self) {
@@ -82,7 +71,7 @@ impl WindowHelper {
 
 fn run_window_async(
     manager_lock: Arc<RwLock<WindowHelper>>,
-    message_handler: Arc<WmcaMessageHandler>,
+    message_handler: Arc<QvOpenApiClientMessageHandler>,
 ) -> std::result::Result<isize, QvOpenApiError> {
     {
         let reader = manager_lock.read().unwrap();
@@ -117,7 +106,7 @@ fn run_window_async(
 
 fn run_window_sync(
     manager_lock: Arc<RwLock<WindowHelper>>,
-    message_handler: Arc<WmcaMessageHandler>,
+    message_handler: Arc<QvOpenApiClientMessageHandler>,
 ) -> std::result::Result<(), QvOpenApiError> {
     let hwnd;
     {

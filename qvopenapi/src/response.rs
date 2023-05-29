@@ -1,4 +1,4 @@
-use std::ffi::c_char;
+use std::any::Any;
 
 use chrono::{DateTime, FixedOffset};
 
@@ -32,8 +32,8 @@ pub struct AccountInfoResponse {
 pub struct DataResponse {
     pub tr_index: i32,
     pub block_name: String,
-    pub block_data: *const c_char,
     pub block_len: i32,
+    pub block_data: Box<dyn Any>,
 }
 
 pub struct ErrorResponse {

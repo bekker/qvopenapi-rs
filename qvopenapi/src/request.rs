@@ -34,7 +34,7 @@ impl QvOpenApiRequest for ConnectRequest {
     }
 }
 
-pub struct QueryRequest<T> {
+pub struct QueryRequest<T: ?Sized> {
     pub tr_index: i32,
     pub tr_code: &'static str,
     pub input: Box<T>,
