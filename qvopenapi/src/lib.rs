@@ -18,12 +18,12 @@ use std::{
 
 pub use error::*;
 use log::{debug, info};
-use query::*;
+pub use query::*;
 pub use request::*;
 pub use response::*;
 pub use window_mgr::WindowHelper;
 pub use wmca_lib::{init, is_connected, set_port, set_server};
-pub use client::SimpleQvOpenApiClient;
+pub use client::{QvOpenApiClient, QvOpenApiClientMessageHandler, SimpleQvOpenApiClient};
 
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},

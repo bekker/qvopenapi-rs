@@ -115,10 +115,9 @@ impl SimpleQvOpenApiClient {
         &self,
         tr_index: i32,
         account_index: i32,
-        password: &str,
         balance_type: char,
     ) -> Result<(), QvOpenApiError> {
-        self.query(make_c8201_request(tr_index, account_index, password, balance_type)?)
+        self.query(make_c8201_request(tr_index, account_index, balance_type)?)
     }
 
     pub fn query<T: Send + Sync + 'static>(
@@ -177,7 +176,6 @@ impl QvOpenApiClientMessageHandler {
                     "CA_RECEIVEDATA [TR{}] {} {}",
                     res.tr_index, res.block_name, res.block_len
                 );
-                debug!("CA_RECEIVEDATA BODY [TR{}] {:?}", res.tr_index, res.block_data.downcast_ref::<Vec<C8201Response1>>());
                 (handler.on_data)(&res);
                 Ok(())
             }

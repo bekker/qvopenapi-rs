@@ -1,7 +1,7 @@
 use std::time::Duration;
 
 use ::log::*;
-use qvopenapi::{SimpleQvOpenApiClient, QvOpenApiError, WindowHelper};
+use qvopenapi::{SimpleQvOpenApiClient, QvOpenApiError, WindowHelper, C8201Response, C8201Response1};
 
 fn main() {
     match do_run() {
@@ -41,13 +41,18 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
 
     const BALANCE_TR_INDEX: i32 = 3;
     client.on_data(|res| {
+        info!("tr_index: {}, block_name: {}", res.tr_index, res.block_name.as_str());
         if res.tr_index == BALANCE_TR_INDEX {
             match res.block_name.as_str() {
-                BLOCK_NAME_C8201_OUT => {
-                    
+                qvopenapi::BLOCK_NAME_C8201_OUT => {
+                    let data = res.block_data.downcast_ref::<C8201Response>().unwrap();
+                    info!("출금가능금액: {}", data.chgm_pos_amtz16)
                 }
-                BLOCK_NAME_C8201_OUT1 => {
-
+                qvopenapi::BLOCK_NAME_C8201_OUT1_VEC => {
+                    let data_vec = res.block_data.downcast_ref::<Vec<C8201Response1>>().unwrap();
+                    for data in data_vec.iter() {
+                        info!("종목번호: {}, 종목명: {}, 보유수: {}", data.issue_codez6, data.issue_namez40, data.bal_qtyz16)
+                    }
                 }
                 _ => {
                     error!("Unknown block name {}", res.block_name)
@@ -55,7 +60,7 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
             }
         }
     });
-    client.get_balance(BALANCE_TR_INDEX, 1, password.as_str(), '1')?;
+    client.get_balance(BALANCE_TR_INDEX, 1, '1')?;
     std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }

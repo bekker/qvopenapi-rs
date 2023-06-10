@@ -3,6 +3,10 @@ extern crate qvopenapi;
 extern crate lazy_static;
 use std::sync::Arc;
 
+pub mod client;
+mod query;
+mod request;
+
 use qvopenapi::*;
 
 pub fn connect(

@@ -1,7 +1,7 @@
 use std::ffi::c_char;
 use std::mem::size_of;
 
-use crate::{QueryRequest, wmca_lib, QvOpenApiError, message::from_cp949};
+use crate::{QueryRequest, QvOpenApiError, message::from_cp949};
 use crate::bindings::*;
 
 pub const TR_CODE_C8201: &str = "c8201";
@@ -9,10 +9,9 @@ pub const TR_CODE_C8201: &str = "c8201";
 pub fn make_c8201_request(
 	tr_index: i32,
 	account_index: i32,
-	password: &str,
 	balance_type: char,
 ) -> Result<QueryRequest<Tc8201InBlock>, QvOpenApiError> {
-	let mut req = QueryRequest {
+	let req = QueryRequest {
 		tr_index,
 		tr_code: TR_CODE_C8201,
 		input: Box::new(Tc8201InBlock {
@@ -23,7 +22,6 @@ pub fn make_c8201_request(
 		}),
 		account_index,
 	};
-	wmca_lib::set_account_index_pwd(&mut req.input.pswd_noz44, account_index, password)?;
 	return Ok(req);
 }
 
@@ -70,15 +68,15 @@ pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Resul
 		let block_count = block_len as usize / size_of::<Tc8201OutBlock1>();
 		let res: &[Tc8201OutBlock1] = core::slice::from_raw_parts(block_data as *const Tc8201OutBlock1, block_count);
 
-        let ret = res.iter()
+        let ret: Vec<Result<C8201Response1, QvOpenApiError>> = res.iter()
             .map(|res| {
-                C8201Response1 {
+                Ok(C8201Response1 {
 					issue_codez6: from_cp949(&(*res).issue_codez6).parse().unwrap(),
-					issue_namez40: from_cp949(&(*res).issue_namez40).parse().unwrap(),
+					issue_namez40: from_cp949(&(*res).issue_namez40).trim().into(),
 					bal_typez6: from_cp949(&(*res).bal_typez6).parse().unwrap(),
 					loan_datez10: from_cp949(&(*res).loan_datez10).parse().unwrap(),
-					bal_qtyz16: from_cp949(&(*res).bal_qtyz16).parse().unwrap(),
-					unstl_qtyz16: from_cp949(&(*res).unstl_qtyz16).parse().unwrap(),
+					bal_qtyz16: from_cp949(&(*res).bal_qtyz16).trim().parse().unwrap_or(0),
+					unstl_qtyz16: from_cp949(&(*res).unstl_qtyz16).parse().unwrap_or(0),
 					slby_amtz16: from_cp949(&(*res).slby_amtz16).parse().unwrap(),
 					prsnt_pricez16: from_cp949(&(*res).prsnt_pricez16).parse().unwrap(),
 					lsnpf_amtz16: from_cp949(&(*res).lsnpf_amtz16).parse().unwrap(),
@@ -90,10 +88,12 @@ pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Resul
 					issue_mgamt_ratez6: from_cp949(&(*res).issue_mgamt_ratez6).parse().unwrap(),
 					medo_slby_amtz16: from_cp949(&(*res).medo_slby_amtz16).parse().unwrap(),
 					post_lsnpf_amtz16: from_cp949(&(*res).post_lsnpf_amtz16).parse().unwrap(),
-				 }
+				 })
             })
             .collect();
-		Ok(ret)
+		ret
+			.into_iter()
+			.collect()
 	}
 }
 
@@ -137,8 +137,8 @@ pub struct C8201Response1 {
     pub issue_namez40: String, //종목명
     pub bal_typez6: String, //잔고유형
     pub loan_datez10: String, //대출일
-    pub bal_qtyz16: String, //잔고수량
-    pub unstl_qtyz16: String, //미결제량
+    pub bal_qtyz16: i64, //잔고수량
+    pub unstl_qtyz16: i64, //미결제량
     pub slby_amtz16: String, //평균매입가
     pub prsnt_pricez16: String, //현재가
     pub lsnpf_amtz16: String, //손익(천원)
@@ -153,4 +153,4 @@ pub struct C8201Response1 {
 }
 
 pub const BLOCK_NAME_C8201_OUT: &str = "c8201OutBlock";
-pub const BLOCK_NAME_C8201_OUT1: &str = "c8201OutBlock1";
+pub const BLOCK_NAME_C8201_OUT1_VEC: &str = "c8201OutBlock1";

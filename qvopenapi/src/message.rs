@@ -114,7 +114,7 @@ fn parse_block(block_name: &str, block_data: *const c_char, block_len: i32) -> R
         BLOCK_NAME_C8201_OUT => {
             Ok(Box::new(parse_c8201_response(block_data, block_len)?))
         }
-        BLOCK_NAME_C8201_OUT1 => {
+        BLOCK_NAME_C8201_OUT1_VEC => {
             Ok(Box::new(parse_c8201_response1(block_data, block_len)?))
         }
         _ => {
