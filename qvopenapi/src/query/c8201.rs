@@ -97,7 +97,7 @@ pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Resul
 	}
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct C8201Response {
 	pub dpsit_amtz16: i64, //예수금
     pub mrgn_amtz16: i64, //신용융자금
@@ -131,7 +131,7 @@ pub struct C8201Response {
     pub pft_rtz15: String, //수익율
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct C8201Response1 {
 	pub issue_codez6: String, //종목번호
     pub issue_namez40: String, //종목명

@@ -1,6 +1,6 @@
 use qvopenapi::{C8201Response1, C8201Response};
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct C8201CompleteResponse {
 	res: Option<C8201Response>,
     res1_vec: Vec<C8201Response1>
@@ -13,9 +13,9 @@ impl C8201CompleteResponse {
 }
 
 pub fn handle_c8201_res(incomplete_res: &mut C8201CompleteResponse, new_data: &C8201Response) {
-    incomplete_res.res = Some(*new_data);
+    incomplete_res.res = Some(new_data.clone());
 }
 
 pub fn handle_c8201_res1(incomplete_res: &mut C8201CompleteResponse, new_data: &C8201Response1) {
-    incomplete_res.res1_vec.push(*new_data);
+    incomplete_res.res1_vec.push(new_data.clone());
 }

@@ -120,7 +120,7 @@ impl SimpleQvOpenApiClient {
         self.query(make_c8201_request(tr_index, account_index, balance_type)?)
     }
 
-    pub fn query<T: Send + Sync + 'static>(
+    fn query<T: Send + Sync + 'static>(
         &self,
         req: QueryRequest<T>
     ) -> Result<(), QvOpenApiError> {
