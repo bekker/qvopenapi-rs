@@ -2,7 +2,6 @@ use log::*;
 use std::{
     collections::HashMap,
     sync::{Arc, Mutex, RwLock},
-    thread::JoinHandle,
     time::Duration,
 };
 use windows::{
@@ -10,66 +9,23 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
 
-use crate::{*, client::{QvOpenApiClientMessageHandler, AbstractQvOpenApiClient}};
+use crate::{*, client::QvOpenApiClientMessageHandler};
 
 lazy_static! {
     static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<QvOpenApiClientMessageHandler>>> =
         RwLock::new(HashMap::new());
 }
 
-pub struct WindowHelper {
-    pub hwnd: Option<isize>,
-    pub status: WindowStatus,
-    pub thread: Option<JoinHandle<std::result::Result<(), QvOpenApiError>>>,
+pub unsafe fn destroy_window(hwnd: isize) {
+    DestroyWindow(HWND(hwnd));
 }
 
-#[derive(PartialEq, Eq)]
-pub enum WindowStatus {
-    Init,
-    Created,
-    Destroyed,
-    Error,
+pub unsafe fn post_message(hwnd: isize, msg: u32, wparam: u32, lparam: isize) {
+    debug!("message {} posted to {}", msg, hwnd);
+    PostMessageA(HWND(hwnd), msg, WPARAM(wparam as usize), LPARAM(lparam));
 }
 
-impl Drop for WindowHelper {
-    fn drop(&mut self) {
-        self.destroy()
-    }
-}
-
-impl WindowHelper {
-    pub const fn new() -> Self {
-        WindowHelper {
-            hwnd: None,
-            status: WindowStatus::Init,
-            thread: None,
-        }
-    }
-
-    pub fn run(
-        &mut self,
-        client: &dyn AbstractQvOpenApiClient,
-    ) -> std::result::Result<isize, QvOpenApiError> {
-        let ret = Arc::new(RwLock::new(WindowHelper {
-            hwnd: None,
-            status: WindowStatus::Init,
-            thread: None,
-        }));
-        run_window_async(ret, client.into())
-    }
-
-    pub fn destroy(&mut self) {
-        if self.hwnd.is_some() && self.status != WindowStatus::Destroyed {
-            info!("Destroying window...");
-            unsafe {
-                DestroyWindow(HWND(self.hwnd.unwrap()));
-            }
-        }
-        self.thread.take().map(JoinHandle::join);
-    }
-}
-
-fn run_window_async(
+pub fn run_window_async(
     manager_lock: Arc<RwLock<WindowHelper>>,
     message_handler: Arc<QvOpenApiClientMessageHandler>,
 ) -> std::result::Result<isize, QvOpenApiError> {

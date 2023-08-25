@@ -11,8 +11,11 @@ log = { workspace = true }
 qvopenapi = { path = "../qvopenapi" }
 serde = { workspace = true }
 serde_json = { workspace = true }
-tokio = { version = "1.28.0", features = ["full"] }
+tokio = { workspace = true }
 warp = "0.3.5"
+
+[dev-dependencies]
+qvopenapi-mock = { path = "../qvopenapi-mock" }
 
 [features]
 disable-unwind = [ "qvopenapi/disable-unwind" ]

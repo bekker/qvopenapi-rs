@@ -10,6 +10,14 @@ mod response;
 mod window_mgr;
 mod wmca_lib;
 mod client;
+
+#[allow(
+    non_upper_case_globals,
+    non_camel_case_types,
+    non_snake_case,
+    dead_code,
+    deref_nullptr,
+)]
 mod bindings;
 
 pub use error::*;
@@ -17,14 +25,18 @@ use log::{debug, info};
 pub use query::*;
 pub use request::*;
 pub use response::*;
-pub use window_mgr::WindowHelper;
+pub use window_mgr::{WindowHelper, WindowStatus};
 pub use wmca_lib::{init, is_connected, set_port, set_server};
-pub use client::{AbstractQvOpenApiClient, QvOpenApiClientMessageHandler, QvOpenApiClient};
+pub use client::{QvOpenApiClientEventHandleable, AbstractQvOpenApiClient, QvOpenApiClientMessageHandler, QvOpenApiClient};
 
+#[cfg(target_os = "windows")]
 use windows::Win32::{
     Foundation::{HWND, LPARAM, WPARAM},
     UI::WindowsAndMessaging::{PostMessageA, WM_USER},
 };
+
+#[cfg(not(target_os = "windows"))]
+pub const WM_USER: u32 = 0;
 
 pub const WM_WMCAEVENT: u32 = WM_USER + 8400;
 

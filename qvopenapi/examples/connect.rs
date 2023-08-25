@@ -28,9 +28,9 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     let mut window_helper = WindowHelper::new();
 
     let hwnd = window_helper.run(&client)?;
-    client.on_connect(|res| {
+    client.on_connect(Box::new(|res| {
         info!("Connected: account count {}", res.account_count);
-    });
+    }));
     client.connect(
         hwnd,
         qvopenapi::AccountType::NAMUH,

@@ -2,18 +2,20 @@
 
 members = [
     "qvopenapi",
-    "qvopenapi-macro",
     "qvopenapi-future",
     "qvopenapi-http",
+    "qvopenapi-mock",
     "qvopenapi-sys",
 ]
 
 [workspace.dependencies]
 chrono = "0.4.24"
 env_logger = "0.10.0"
+lazy_static = "1.4.0"
 libc = "0.2"
 libloading = "0.8"
 log = "0.4.17"
+rpassword = "7.2.0"
 windows = {version = "0.48", features = [
     "Win32_Foundation",
     "Win32_Graphics_Gdi",
@@ -28,3 +30,4 @@ serde = { version = "1.0.162", features = ["derive"] }
 serde_json = "1.0.96"
 strum = "0.24.1"
 strum_macros = "0.24.1"
+tokio = { version = "1.28.0", features = ["full"] }

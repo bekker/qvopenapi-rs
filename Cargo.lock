@@ -1008,11 +1008,15 @@ name = "qvopenapi-future"
 version = "0.1.0"
 dependencies = [
  "custom_error",
+ "env_logger 0.10.0",
  "lazy_static",
  "libloading 0.8.0",
  "log",
  "qvopenapi",
+ "qvopenapi-mock",
+ "rpassword",
  "strum_macros",
+ "tokio",
  "windows",
 ]
 
@@ -1023,6 +1027,7 @@ dependencies = [
  "env_logger 0.10.0",
  "log",
  "qvopenapi",
+ "qvopenapi-mock",
  "serde",
  "serde_json",
  "tokio",
@@ -1030,8 +1035,16 @@ dependencies = [
 ]
 
 [[package]]
-name = "qvopenapi-macro"
+name = "qvopenapi-mock"
 version = "0.1.0"
+dependencies = [
+ "chrono",
+ "custom_error",
+ "lazy_static",
+ "log",
+ "qvopenapi",
+ "strum_macros",
+]
 
 [[package]]
 name = "qvopenapi-sys"

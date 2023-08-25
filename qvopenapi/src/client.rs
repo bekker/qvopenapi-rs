@@ -2,12 +2,16 @@ use std::{sync::{Arc, RwLock, Mutex}, collections::VecDeque};
 
 use crate::*;
 
-pub trait AbstractQvOpenApiClient {
-    fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler>;
+use window_mgr::post_message_to_window;
 
+pub trait QvOpenApiClientEventHandleable {
+    fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler>;
+}
+
+pub trait AbstractQvOpenApiClient: QvOpenApiClientEventHandleable {
     fn set_hwnd(&self, new_hwnd: isize);
 
-    fn on_connect(&mut self, callback: fn(&ConnectResponse)) {
+    fn on_connect(&mut self, callback: Box<dyn Fn(Arc<ConnectResponse>) + Send + Sync>) {
         self.get_handler().message_handler.write().unwrap().on_connect = callback;
     }
 
@@ -71,16 +75,13 @@ pub trait AbstractQvOpenApiClient {
     ) -> Result<(), QvOpenApiError>;
 }
 
-impl From<&dyn AbstractQvOpenApiClient> for Arc<QvOpenApiClientMessageHandler> {
-    fn from(value: &dyn AbstractQvOpenApiClient) -> Arc<QvOpenApiClientMessageHandler> {
-        value.get_handler()
+impl QvOpenApiClientEventHandleable for QvOpenApiClient {
+    fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler> {
+        self.handler.clone()
     }
 }
 
 impl AbstractQvOpenApiClient for QvOpenApiClient {
-    fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler> {
-        self.handler.clone()
-    }
 
     fn set_hwnd(&self, new_hwnd: isize) {
         let mut hwnd = self.handler.hwnd_lock.write().unwrap();
@@ -108,38 +109,44 @@ pub struct QvOpenApiClient {
 
 pub struct QvOpenApiClientMessageHandler {
     hwnd_lock: RwLock<Option<isize>>,
-    message_handler: RwLock<QvOpenApiClientMessageCallbacks>,
+    pub message_handler: RwLock<QvOpenApiClientMessageCallbacks>,
     request_queue_lock: Mutex<VecDeque<Arc<dyn QvOpenApiRequest>>>,
 }
 
-struct QvOpenApiClientMessageCallbacks {
-    on_connect: fn(&ConnectResponse),
-    on_disconnect: fn(),
-    on_socket_error: fn(),
-    on_data: fn(&DataResponse),
-    on_sise: fn(&DataResponse),
-    on_message: fn(&MessageResponse),
-    on_complete: fn(tr_index: i32),
-    on_error: fn(&ErrorResponse),
+impl QvOpenApiClientMessageHandler {
+    pub fn new() -> QvOpenApiClientMessageHandler {
+        QvOpenApiClientMessageHandler {
+            hwnd_lock: RwLock::new(None),
+            message_handler: RwLock::new(QvOpenApiClientMessageCallbacks {
+                on_connect: Box::new(|_| {}),
+                on_disconnect: || {},
+                on_socket_error: || {},
+                on_data: |_| {},
+                on_sise: |_| {},
+                on_message: |_| {},
+                on_complete: |_| {},
+                on_error: |_| {},
+            }),
+            request_queue_lock: Mutex::new(VecDeque::new()),
+        }
+    }
+}
+
+pub struct QvOpenApiClientMessageCallbacks {
+    pub on_connect: Box<dyn Fn(Arc<ConnectResponse>) + Send + Sync>,
+    pub on_disconnect: fn(),
+    pub on_socket_error: fn(),
+    pub on_data: fn(&DataResponse),
+    pub on_sise: fn(&DataResponse),
+    pub on_message: fn(&MessageResponse),
+    pub on_complete: fn(tr_index: i32),
+    pub on_error: fn(&ErrorResponse),
 }
 
 impl QvOpenApiClient {
     pub fn new() -> QvOpenApiClient {
         QvOpenApiClient {
-            handler: Arc::new(QvOpenApiClientMessageHandler {
-                hwnd_lock: RwLock::new(None),
-                message_handler: RwLock::new(QvOpenApiClientMessageCallbacks {
-                    on_connect: |_| {},
-                    on_disconnect: || {},
-                    on_socket_error: || {},
-                    on_data: |_| {},
-                    on_sise: |_| {},
-                    on_message: |_| {},
-                    on_complete: |_| {},
-                    on_error: |_| {},
-                }),
-                request_queue_lock: Mutex::new(VecDeque::new()),
-            }),
+            handler: Arc::new(QvOpenApiClientMessageHandler::new()),
         }
     }
 }
@@ -155,7 +162,7 @@ impl QvOpenApiClientMessageHandler {
                     "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
                     res.login_datetime, res.server_name, res.user_id, res.account_count
                 );
-                (handler.on_connect)(&res);
+                (handler.on_connect)(Arc::new(res));
                 Ok(())
             }
             CA_DISCONNECTED => {
@@ -226,12 +233,5 @@ impl QvOpenApiClientMessageHandler {
     pub fn on_destroy(&self) {
         let mut hwnd = self.hwnd_lock.write().unwrap();
         *hwnd = None;
-    }
-}
-
-fn post_message_to_window(hwnd: isize, msg: u32, wparam: u32, lparam: isize) {
-    debug!("message {} posted to {}", msg, hwnd);
-    unsafe {
-        PostMessageA(HWND(hwnd), msg, WPARAM(wparam as usize), LPARAM(lparam));
     }
 }

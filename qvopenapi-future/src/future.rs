@@ -12,13 +12,21 @@ impl Clone for ResponseFuture {
 }
 
 struct ResponseFutureInner {
-    response: Option<Result<Arc<dyn Any + Send + Sync>, QvOpenApiError>>,
-    waker: Option<Waker>,
+    pub response: Option<Result<Arc<dyn Any + Send + Sync>, QvOpenApiError>>,
+    pub waker: Option<Waker>,
 }
 
 impl ResponseFuture {
     pub fn new() -> ResponseFuture {
         ResponseFuture { inner: Arc::new(Mutex::new(ResponseFutureInner::new())) }
+    }
+
+    pub fn resolve(&self, res: Result<Arc<dyn Any + Send + Sync>, QvOpenApiError>) {
+        let mut locked = self.inner.lock().unwrap();
+        locked.response = Some(res);
+        if locked.waker.is_some() {
+            locked.waker.as_ref().unwrap().wake_by_ref();
+        }
     }
 }
 

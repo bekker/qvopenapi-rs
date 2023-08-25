@@ -26,6 +26,7 @@ impl From<libloading::Error> for QvOpenApiError {
     }
 }
 
+#[cfg(target_os = "windows")]
 impl From<windows::core::Error> for QvOpenApiError {
     fn from(_e: windows::core::Error) -> Self {
         QvOpenApiError::WindowCreationError

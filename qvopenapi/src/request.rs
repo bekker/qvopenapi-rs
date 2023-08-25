@@ -5,7 +5,11 @@ use wmca_lib;
 pub trait QvOpenApiRequest: Send + Sync {
     fn before_post(&self) -> Result<(), QvOpenApiError>;
     fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError>;
+    fn get_tr_code(&self) -> &str;
+    fn get_tr_index(&self) -> i32;
 }
+
+pub const TR_CODE_CONNECT: &str = "_connect";
 
 pub struct ConnectRequest {
     pub account_type: AccountType,
@@ -32,6 +36,14 @@ impl QvOpenApiRequest for ConnectRequest {
             &self.cert_password,
         )
     }
+
+    fn get_tr_code(&self) -> &str {
+        TR_CODE_CONNECT
+    }
+
+    fn get_tr_index(&self) -> i32 {
+        1
+    }
 }
 
 pub struct QueryRequest<T: ?Sized> {
@@ -54,5 +66,13 @@ impl<T: Send + Sync> QvOpenApiRequest for QueryRequest<T> {
             self.input.as_ref(),
             self.account_index,
         )
+    }
+
+    fn get_tr_code(&self) -> &str {
+        self.tr_code
+    }
+
+    fn get_tr_index(&self) -> i32 {
+        self.tr_index
     }
 }

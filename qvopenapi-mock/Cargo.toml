@@ -1,5 +1,5 @@
 [package]
-name = "qvopenapi-future"
+name = "qvopenapi-mock"
 version = "0.1.0"
 edition = "2021"
 
@@ -7,18 +7,8 @@ edition = "2021"
 
 [dependencies]
 qvopenapi = { path = "../qvopenapi" }
+chrono = { workspace = true }
 custom_error = { workspace = true }
-libloading = { workspace = true }
-windows = { workspace = true }
 lazy_static = { workspace = true }
 log = { workspace = true }
 strum_macros = { workspace = true }
-
-[dev-dependencies]
-qvopenapi-mock = { path = "../qvopenapi-mock" }
-tokio = { workspace = true }
-env_logger = { workspace = true }
-rpassword = { workspace = true }
-
-[features]
-disable-unwind = ["qvopenapi/disable-unwind"]
