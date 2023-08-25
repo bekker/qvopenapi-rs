@@ -6,25 +6,19 @@ use crate::future::ResponseFuture;
 
 const CONNECT_TR_INDEX: i32 = 1;
 
-pub struct AsyncQvOpenApiClient {
-    delegate: SimpleQvOpenApiClient,
+pub struct FutureQvOpenApiClient {
+    delegate: QvOpenApiClient,
     future_map_lock: Mutex<HashMap<i32, ResponseFuture>>,
 }
 
-impl qvopenapi::QvOpenApiClient for AsyncQvOpenApiClient {
-    fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler> {
-        self.delegate.get_handler()
-    }
-}
-
-impl AsyncQvOpenApiClient {
-    fn new() -> AsyncQvOpenApiClient {
-        let mut client = SimpleQvOpenApiClient::new();
+impl FutureQvOpenApiClient {
+    fn new() -> FutureQvOpenApiClient {
+        let mut client = QvOpenApiClient::new();
         client.on_connect(|res| {
             // TODO
         });
 
-        AsyncQvOpenApiClient {
+        FutureQvOpenApiClient {
             delegate: client,
             future_map_lock: Mutex::new(HashMap::new()),
         }

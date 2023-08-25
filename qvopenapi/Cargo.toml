@@ -20,6 +20,7 @@ strum_macros = { workspace = true }
 
 [dev-dependencies]
 env_logger = { workspace = true }
+rpassword = "7.2.0"
 
 [build-dependencies]
 bindgen = "0.53.1"

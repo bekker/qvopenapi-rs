@@ -1,7 +1,8 @@
-use std::time::Duration;
+use std::{time::Duration, io::Write};
 
 use ::log::*;
-use qvopenapi::{SimpleQvOpenApiClient, QvOpenApiError, WindowHelper, C8201Response, C8201Response1};
+use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper, C8201Response, C8201Response1, AbstractQvOpenApiClient};
+use rpassword::read_password;
 
 fn main() {
     match do_run() {
@@ -17,13 +18,13 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
     );
 
-    let id = find_env("QV_ID")?;
-    let password = find_env("QV_PW")?;
-    let cert_password = find_env("QV_CERTPW")?;
+    let id = find_env_or_get_input("QV_ID")?;
+    let password = find_env_or_get_input("QV_PW")?;
+    let cert_password = find_env_or_get_input("QV_CERTPW")?;
 
     qvopenapi::init()?;
 
-    let mut client = SimpleQvOpenApiClient::new();
+    let mut client = QvOpenApiClient::new();
     let mut window_helper = WindowHelper::new();
 
     let hwnd = window_helper.run(&client)?;
@@ -65,8 +66,29 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     Ok(())
 }
 
-fn find_env(key: &str) -> Result<String, qvopenapi::QvOpenApiError> {
-    std::env::var(key).map_err(|_| QvOpenApiError::BadRequestError {
-        message: format!("env {} not found", key),
-    })
+fn find_env_or_get_input(key: &str) -> Result<String, qvopenapi::QvOpenApiError> {
+    let env_var = std::env::var(key);
+
+    if env_var.is_ok() {
+        return Ok(env_var.unwrap());
+    }
+
+    loop {
+        print!("Enter {}: ", key);
+        std::io::stdout().flush().unwrap();
+
+        let input_result = read_password();
+        if input_result.is_err() {
+            return Err(QvOpenApiError::BadRequestError {
+                message: format!("env {} not found", key),
+            })
+        }
+
+        let trimmed = String::from(input_result.unwrap().trim());
+        if trimmed.len() > 0 {
+            return Ok(trimmed)
+        }
+
+        println!("");
+    }
 }

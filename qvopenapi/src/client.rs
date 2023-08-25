@@ -2,23 +2,107 @@ use std::{sync::{Arc, RwLock, Mutex}, collections::VecDeque};
 
 use crate::*;
 
-pub trait QvOpenApiClient {
+pub trait AbstractQvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler>;
+
+    fn set_hwnd(&self, new_hwnd: isize);
+
+    fn on_connect(&mut self, callback: fn(&ConnectResponse)) {
+        self.get_handler().message_handler.write().unwrap().on_connect = callback;
+    }
+
+    fn on_disconnect(&mut self, callback: fn()) {
+        self.get_handler().message_handler.write().unwrap().on_disconnect = callback;
+    }
+
+    fn on_socket_error(&mut self, callback: fn()) {
+        self.get_handler().message_handler.write().unwrap().on_socket_error = callback;
+    }
+
+    fn on_data(&mut self, callback: fn(&DataResponse)) {
+        self.get_handler().message_handler.write().unwrap().on_data = callback;
+    }
+
+    fn on_sise(&mut self, callback: fn(&DataResponse)) {
+        self.get_handler().message_handler.write().unwrap().on_sise = callback;
+    }
+
+    fn on_message(&mut self, callback: fn(&MessageResponse)) {
+        self.get_handler().message_handler.write().unwrap().on_message = callback;
+    }
+
+    fn on_complete(&mut self, callback: fn(i32)) {
+        self.get_handler().message_handler.write().unwrap().on_complete = callback;
+    }
+
+    fn on_error(&mut self, callback: fn(&ErrorResponse)) {
+        self.get_handler().message_handler.write().unwrap().on_error = callback;
+    }
+
+    fn connect(
+        &self,
+        new_hwnd: isize,
+        account_type: AccountType,
+        id: &str,
+        password: &str,
+        cert_password: &str,
+    ) -> Result<(), QvOpenApiError> {
+        self.set_hwnd(new_hwnd);
+        self.query(Arc::new(ConnectRequest {
+            account_type,
+            id: id.into(),
+            password: password.into(),
+            cert_password: cert_password.into(),
+        }))
+    }
+
+    fn get_balance(
+        &self,
+        tr_index: i32,
+        account_index: i32,
+        balance_type: char,
+    ) -> Result<(), QvOpenApiError> {
+        self.query(Arc::new(make_c8201_request(tr_index, account_index, balance_type)?))
+    }
+
+    fn query(
+        &self,
+        req: Arc<dyn QvOpenApiRequest>
+    ) -> Result<(), QvOpenApiError>;
 }
 
-impl From<&dyn QvOpenApiClient> for Arc<QvOpenApiClientMessageHandler> {
-    fn from(value: &dyn QvOpenApiClient) -> Arc<QvOpenApiClientMessageHandler> {
+impl From<&dyn AbstractQvOpenApiClient> for Arc<QvOpenApiClientMessageHandler> {
+    fn from(value: &dyn AbstractQvOpenApiClient) -> Arc<QvOpenApiClientMessageHandler> {
         value.get_handler()
     }
 }
 
-impl QvOpenApiClient for SimpleQvOpenApiClient {
+impl AbstractQvOpenApiClient for QvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler> {
         self.handler.clone()
     }
+
+    fn set_hwnd(&self, new_hwnd: isize) {
+        let mut hwnd = self.handler.hwnd_lock.write().unwrap();
+        *hwnd = Some(new_hwnd);
+    }
+
+    fn query(&self, req: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
+        req.before_post()?;
+        let hwnd = self.handler.hwnd_lock.read().unwrap();
+        let mut request_queue = self.handler.request_queue_lock.lock().unwrap();
+        request_queue.push_back(req);
+        post_message_to_window(
+            hwnd.unwrap(),
+            WM_WMCAEVENT,
+            CA_CUSTOM_EXECUTE_POSTED_COMMAND,
+            0,
+        );
+        Ok(())
+    }
 }
 
-pub struct SimpleQvOpenApiClient {
+pub struct QvOpenApiClient {
     handler: Arc<QvOpenApiClientMessageHandler>,
 }
 
@@ -39,9 +123,9 @@ struct QvOpenApiClientMessageCallbacks {
     on_error: fn(&ErrorResponse),
 }
 
-impl SimpleQvOpenApiClient {
-    pub fn new() -> SimpleQvOpenApiClient {
-        SimpleQvOpenApiClient {
+impl QvOpenApiClient {
+    pub fn new() -> QvOpenApiClient {
+        QvOpenApiClient {
             handler: Arc::new(QvOpenApiClientMessageHandler {
                 hwnd_lock: RwLock::new(None),
                 message_handler: RwLock::new(QvOpenApiClientMessageCallbacks {
@@ -57,88 +141,6 @@ impl SimpleQvOpenApiClient {
                 request_queue_lock: Mutex::new(VecDeque::new()),
             }),
         }
-    }
-
-    pub fn on_connect(&mut self, callback: fn(&ConnectResponse)) {
-        self.handler.message_handler.write().unwrap().on_connect = callback;
-    }
-
-    pub fn on_disconnect(&mut self, callback: fn()) {
-        self.handler.message_handler.write().unwrap().on_disconnect = callback;
-    }
-
-    pub fn on_socket_error(&mut self, callback: fn()) {
-        self.handler.message_handler.write().unwrap().on_socket_error = callback;
-    }
-
-    pub fn on_data(&mut self, callback: fn(&DataResponse)) {
-        self.handler.message_handler.write().unwrap().on_data = callback;
-    }
-
-    pub fn on_sise(&mut self, callback: fn(&DataResponse)) {
-        self.handler.message_handler.write().unwrap().on_sise = callback;
-    }
-
-    pub fn on_message(&mut self, callback: fn(&MessageResponse)) {
-        self.handler.message_handler.write().unwrap().on_message = callback;
-    }
-
-    pub fn on_complete(&mut self, callback: fn(i32)) {
-        self.handler.message_handler.write().unwrap().on_complete = callback;
-    }
-
-    pub fn on_error(&mut self, callback: fn(&ErrorResponse)) {
-        self.handler.message_handler.write().unwrap().on_error = callback;
-    }
-
-    pub fn connect(
-        &self,
-        new_hwnd: isize,
-        account_type: AccountType,
-        id: &str,
-        password: &str,
-        cert_password: &str,
-    ) -> Result<(), QvOpenApiError> {
-        {
-            let mut hwnd = self.handler.hwnd_lock.write().unwrap();
-            *hwnd = Some(new_hwnd);
-        }
-        self.post_command(Arc::new(ConnectRequest {
-            account_type,
-            id: id.into(),
-            password: password.into(),
-            cert_password: cert_password.into(),
-        }))
-    }
-
-    pub fn get_balance(
-        &self,
-        tr_index: i32,
-        account_index: i32,
-        balance_type: char,
-    ) -> Result<(), QvOpenApiError> {
-        self.query(make_c8201_request(tr_index, account_index, balance_type)?)
-    }
-
-    fn query<T: Send + Sync + 'static>(
-        &self,
-        req: QueryRequest<T>
-    ) -> Result<(), QvOpenApiError> {
-        self.post_command(Arc::new(req))
-    }
-
-    fn post_command(&self, command: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError> {
-        command.before_post()?;
-        let hwnd = self.handler.hwnd_lock.read().unwrap();
-        let mut request_queue = self.handler.request_queue_lock.lock().unwrap();
-        request_queue.push_back(command);
-        post_message_to_window(
-            hwnd.unwrap(),
-            WM_WMCAEVENT,
-            CA_CUSTOM_EXECUTE_POSTED_COMMAND,
-            0,
-        );
-        Ok(())
     }
 }
 

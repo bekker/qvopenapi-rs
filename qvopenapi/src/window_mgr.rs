@@ -1,7 +1,7 @@
 use log::*;
 use std::{
     collections::HashMap,
-    sync::{Mutex, RwLock},
+    sync::{Arc, Mutex, RwLock},
     thread::JoinHandle,
     time::Duration,
 };
@@ -10,7 +10,7 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
 
-use crate::{*, client::{QvOpenApiClientMessageHandler, QvOpenApiClient}};
+use crate::{*, client::{QvOpenApiClientMessageHandler, AbstractQvOpenApiClient}};
 
 lazy_static! {
     static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<QvOpenApiClientMessageHandler>>> =
@@ -48,7 +48,7 @@ impl WindowHelper {
 
     pub fn run(
         &mut self,
-        client: &dyn QvOpenApiClient,
+        client: &dyn AbstractQvOpenApiClient,
     ) -> std::result::Result<isize, QvOpenApiError> {
         let ret = Arc::new(RwLock::new(WindowHelper {
             hwnd: None,
