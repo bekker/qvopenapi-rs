@@ -1008,16 +1008,6 @@ name = "qvopenapi-bindings"
 version = "0.1.0"
 dependencies = [
  "bindgen",
- "chrono",
- "custom_error",
- "encoding",
- "lazy_static",
- "libloading 0.8.0",
- "log",
- "once_cell",
- "qvopenapi-sys",
- "strum",
- "strum_macros",
 ]
 
 [[package]]

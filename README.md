@@ -33,6 +33,9 @@ brew install mingw-w64
 brew tap gcenx/wine
 brew install --cask --no-quarantine wine-crossover
 
+# Download dlls
+scripts/download_dll.sh
+
 # Build webserver
 # https://github.com/rust-lang/rust/issues/79609
 # To bypass missing 'dwarf' exception handling on mingw i686 installations,
@@ -48,18 +51,15 @@ wine target/i686-pc-windows-gnu/release/qvopenapi-http.exe
 # Setup rust cross-compilation
 rustup target add i686-pc-windows-msvc
 
+# Download dlls
+scripts/download_dll.sh
+
 # Build webserver
 cargo build -p qvopenapi-http --release --target i686-pc-windows-msvc
 
 # Run webserver
 cargo run -p qvopenapi-http --release --target i686-pc-windows-msvc
 ```
-
-### Download DLL
-- 아래 경로에서 DLL 다운로드
-    - https://download.nhqv.com/download/iflgtrading/openapi.qv.zip
-- 실행할 바이너리와 같은 폴더에 복사
-  - ex: example 실행하고자 하는 경우 `target/i686-pc-windows-gnu/release` 폴더에 복사
 
 ### 인증서 복사
 - 윈도우 하드디스크에 인증서 저장
