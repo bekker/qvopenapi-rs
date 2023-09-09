@@ -11,6 +11,8 @@ use windows::{
 
 use crate::*;
 
+use super::message_const::*;
+
 lazy_static! {
     static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<QvOpenApiClientMessageHandler>>> =
         RwLock::new(HashMap::new());

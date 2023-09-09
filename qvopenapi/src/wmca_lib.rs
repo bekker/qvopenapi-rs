@@ -99,6 +99,7 @@ pub fn query<T>(
     ))
 }
 
+#[allow(dead_code)]
 pub fn set_account_index_pwd<T>(
     input: &mut T,
     account_index: i32,
