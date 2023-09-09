@@ -1,7 +1,8 @@
-use chrono::{DateTime, FixedOffset, TimeZone};
+use chrono::TimeZone;
 use qvopenapi_bindings::LoginBlock;
+use serde::{Serialize, Deserialize};
 
-use crate::{utils::{from_cp949, SEOUL_TZ}, QvOpenApiError};
+use crate::{utils::{from_cp949, SEOUL_TZ}, QvOpenApiError, wmca_lib, client::QvOpenApiRequest};
 
 pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOpenApiError> {
     let data_block = lparam as *const LoginBlock;
@@ -36,10 +37,10 @@ pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOp
             })
             .collect();
 
-        let login_datetime = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?;
+        let login_timestamp = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?.timestamp();
 
         Ok(ConnectResponse {
-            login_datetime,
+            login_timestamp,
             server_name,
             user_id,
             account_count,
@@ -48,14 +49,60 @@ pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOp
     }
 }
 
+pub const TR_CODE_CONNECT: &str = "_connect";
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct ConnectRequest {
+    pub account_type: AccountType,
+    pub id: String,
+    pub password: String,
+    pub cert_password: String,
+}
+
+#[derive(Debug, strum_macros::Display, Clone, Copy, Deserialize)]
+pub enum AccountType {
+    QV,
+    NAMUH,
+}
+
+impl QvOpenApiRequest for ConnectRequest {
+    fn before_post(&self) -> Result<(), QvOpenApiError> {
+        if wmca_lib::is_connected()? {
+            return Err(QvOpenApiError::AlreadyConnectedError);
+        }
+
+        Ok(())
+    }
+
+    fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError> {
+        wmca_lib::connect(
+            hwnd,
+            self.account_type,
+            &self.id,
+            &self.password,
+            &self.cert_password,
+        )
+    }
+
+    fn get_tr_code(&self) -> &str {
+        TR_CODE_CONNECT
+    }
+
+    fn get_tr_index(&self) -> i32 {
+        1
+    }
+}
+
+#[derive(Debug, Clone, Serialize)]
 pub struct ConnectResponse {
-    pub login_datetime: DateTime<FixedOffset>,
+    pub login_timestamp: i64,
     pub server_name: String,
     pub user_id: String,
     pub account_count: usize,
     pub account_infoes: Vec<AccountInfoResponse>,
 }
 
+#[derive(Debug, Clone, Serialize)]
 pub struct AccountInfoResponse {
     pub account_no: String,
     pub account_name: String,

@@ -2,6 +2,13 @@ use std::{sync::{Arc, RwLock, Mutex}, collections::VecDeque};
 
 use crate::{*, window_mgr::message_const::*};
 
+pub trait QvOpenApiRequest: Send + Sync {
+    fn before_post(&self) -> Result<(), QvOpenApiError>;
+    fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError>;
+    fn get_tr_code(&self) -> &str;
+    fn get_tr_index(&self) -> i32;
+}
+
 pub trait AbstractQvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler>;
 
@@ -144,7 +151,7 @@ impl QvOpenApiClientMessageHandler {
                 let res = models::parse_connect(lparam)?;
                 info!(
                     "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
-                    res.login_datetime, res.server_name, res.user_id, res.account_count
+                    res.login_timestamp, res.server_name, res.user_id, res.account_count
                 );
                 (handler.on_connect)(Arc::new(res));
                 Ok(())

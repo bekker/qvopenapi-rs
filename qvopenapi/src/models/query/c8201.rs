@@ -1,32 +1,47 @@
 use std::ffi::c_char;
 use std::mem::size_of;
+use std::sync::Arc;
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 
 use crate::utils::from_cp949;
-use crate::{QueryRequest, QvOpenApiError};
+use crate::{QvOpenApiError, RawQueryRequest};
 use qvopenapi_bindings::{Tc8201InBlock, Tc8201OutBlock, Tc8201OutBlock1};
 
 pub const TR_CODE_C8201: &str = "c8201";
 
-pub fn make_c8201_request(
-	tr_index: i32,
-	account_index: i32,
-	balance_type: char,
-) -> Result<QueryRequest<Tc8201InBlock>, QvOpenApiError> {
-	let req = QueryRequest {
-		tr_index,
-		tr_code: TR_CODE_C8201,
-		input: Box::new(Tc8201InBlock {
-			pswd_noz44: [' ' as c_char; 44],
-			_pswd_noz44: ' ' as c_char,
-			bnc_bse_cdz1: [balance_type as c_char],
-			_bnc_bse_cdz1: ' ' as c_char,
-		}),
-		account_index,
-	};
-	return Ok(req);
+#[derive(Debug, Clone, Deserialize)]
+pub struct C8201Request {
+	pub tr_index: i32,
+	pub account_index: i32,
+	pub balance_type: char
+}
+
+impl C8201Request {
+	pub fn create(tr_index: i32, account_index: i32, balance_type: char) -> Arc<RawQueryRequest<Tc8201InBlock>> {
+		Arc::new(C8201Request {
+			tr_index,
+			account_index,
+			balance_type
+		}.into())
+	}
+}
+
+impl From<C8201Request> for RawQueryRequest<Tc8201InBlock> {
+	fn from(req: C8201Request) -> Self {
+		RawQueryRequest {
+			tr_index: req.tr_index,
+			tr_code: TR_CODE_C8201,
+			account_index: req.account_index,
+			raw_input: Box::new(Tc8201InBlock {
+				pswd_noz44: [' ' as c_char; 44],
+				_pswd_noz44: ' ' as c_char,
+				bnc_bse_cdz1: [req.balance_type as c_char],
+				_bnc_bse_cdz1: ' ' as c_char,
+			})
+		}
+	}
 }
 
 pub fn parse_c8201_response(block_data: *const c_char, _block_len: i32) -> Result<Value, QvOpenApiError> {

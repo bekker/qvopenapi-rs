@@ -4,6 +4,7 @@ use crate::utils::from_cp949_ptr;
 use log::*;
 use qvopenapi_bindings::MessageHeader;
 use qvopenapi_bindings::OutDataBlock;
+use serde::Serialize;
 use std::ffi::c_char;
 
 use crate::error::*;
@@ -45,12 +46,14 @@ pub fn parse_error(lparam: isize) -> std::result::Result<ErrorResponse, QvOpenAp
     }
 }
 
+#[derive(Debug, Clone, Serialize)]
 pub struct MessageResponse {
     pub tr_index: i32,
     pub msg_code: String,
     pub msg: String,
 }
 
+#[derive(Debug, Clone, Serialize)]
 pub struct ErrorResponse {
     pub tr_index: i32,
     pub error_msg: String,

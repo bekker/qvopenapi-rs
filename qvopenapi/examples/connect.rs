@@ -1,7 +1,7 @@
 use std::{time::Duration, io::Write, sync::Arc};
 
 use ::log::*;
-use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper, AbstractQvOpenApiClient};
+use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper, AbstractQvOpenApiClient, C8201Request};
 use rpassword::read_password;
 
 fn main() {
@@ -62,7 +62,7 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
         }
     });
 
-    client.query(Arc::new(qvopenapi::make_c8201_request(BALANCE_TR_INDEX, 1, '1')?))?;
+    client.query(C8201Request::create(BALANCE_TR_INDEX, 1, '1'))?;
     std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }

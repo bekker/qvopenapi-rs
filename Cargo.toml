@@ -8,7 +8,7 @@ members = [
 ]
 
 [workspace.dependencies]
-chrono = "0.4.24"
+chrono = { version = "0.4.24", features = ["serde"] }
 env_logger = "0.10.0"
 lazy_static = "1.4.0"
 libc = "0.2"

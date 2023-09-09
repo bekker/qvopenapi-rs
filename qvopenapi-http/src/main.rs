@@ -3,7 +3,7 @@ use std::convert::Infallible;
 use ::log::*;
 use serde::{Deserialize, Serialize};
 use warp::{
-    http::{Response, StatusCode},
+    http::{StatusCode},
     *,
 };
 
@@ -12,42 +12,15 @@ extern crate serde;
 use qvopenapi::{AccountType, QvOpenApiError};
 
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 struct MessageResponse {
     message: String,
 }
 
 #[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
 struct ConnectRequest {
     id: String,
     password: String,
     cert_password: String,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct ConnectResponse {
-    pub login_datetime: String,
-    pub server_name: String,
-    pub user_id: String,
-    pub account_count: usize,
-    pub account_infoes: Vec<AccountInfoResponse>,
-}
-
-#[derive(Deserialize, Serialize)]
-#[serde(rename_all = "camelCase")]
-struct AccountInfoResponse {
-    pub account_no: String,
-    pub account_name: String,
-    // 상품 코드
-    pub act_pdt_cdz3: String,
-    // 관리점 코드
-    pub amn_tab_cdz4: String,
-    // 위임 만기일
-    pub expr_datez8: String,
-    // 일괄주문 허용계좌(G:허용)
-    pub bulk_granted: bool,
 }
 
 async fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
