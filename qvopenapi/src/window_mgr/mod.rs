@@ -4,7 +4,9 @@ use std::{
     thread::JoinHandle,
 };
 
-use crate::{*, client::QvOpenApiClientEventHandleable};
+use crate::*;
+
+pub mod message_const;
 
 #[cfg(target_os = "windows")]
 mod window_mgr_win32;
@@ -47,7 +49,7 @@ impl WindowHelper {
 
     pub fn run(
         &mut self,
-        client: &dyn QvOpenApiClientEventHandleable,
+        client: &dyn AbstractQvOpenApiClient,
     ) -> std::result::Result<isize, QvOpenApiError> {
         let ret = Arc::new(RwLock::new(WindowHelper {
             hwnd: None,

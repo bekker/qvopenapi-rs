@@ -1,7 +1,7 @@
-use std::{time::Duration, io::Write};
+use std::{time::Duration, io::Write, sync::Arc};
 
 use ::log::*;
-use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper, C8201Response, C8201Response1, AbstractQvOpenApiClient};
+use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper, AbstractQvOpenApiClient};
 use rpassword::read_password;
 
 fn main() {
@@ -46,13 +46,13 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
         if res.tr_index == BALANCE_TR_INDEX {
             match res.block_name.as_str() {
                 qvopenapi::BLOCK_NAME_C8201_OUT => {
-                    let data = res.block_data.downcast_ref::<C8201Response>().unwrap();
-                    info!("출금가능금액: {}", data.chgm_pos_amtz16)
+                    let data = &res.block_data;
+                    info!("출금가능금액: {}", data["chgm_pos_amtz16"])
                 }
                 qvopenapi::BLOCK_NAME_C8201_OUT1_VEC => {
-                    let data_vec = res.block_data.downcast_ref::<Vec<C8201Response1>>().unwrap();
-                    for data in data_vec.iter() {
-                        info!("종목번호: {}, 종목명: {}, 보유수: {}", data.issue_codez6, data.issue_namez40, data.bal_qtyz16)
+                    let results = res.block_data["results"].as_array().unwrap();
+                    for data in results.iter() {
+                        info!("종목번호: {}, 종목명: {}, 보유수: {}", data["issue_codez6"], data["issue_namez40"], data["bal_qtyz16"])
                     }
                 }
                 _ => {
@@ -61,7 +61,8 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
             }
         }
     });
-    client.get_balance(BALANCE_TR_INDEX, 1, '1')?;
+
+    client.query(Arc::new(qvopenapi::make_c8201_request(BALANCE_TR_INDEX, 1, '1')?))?;
     std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }

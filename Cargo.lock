@@ -998,6 +998,8 @@ dependencies = [
  "qvopenapi-bindings",
  "qvopenapi-sys",
  "rpassword",
+ "serde",
+ "serde_json",
  "strum",
  "strum_macros",
  "windows",

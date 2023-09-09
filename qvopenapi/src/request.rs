@@ -1,7 +1,5 @@
 use crate::*;
 
-use wmca_lib;
-
 pub trait QvOpenApiRequest: Send + Sync {
     fn before_post(&self) -> Result<(), QvOpenApiError>;
     fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError>;
@@ -16,6 +14,12 @@ pub struct ConnectRequest {
     pub id: String,
     pub password: String,
     pub cert_password: String,
+}
+
+#[derive(strum_macros::Display, Clone, Copy)]
+pub enum AccountType {
+    QV,
+    NAMUH,
 }
 
 impl QvOpenApiRequest for ConnectRequest {

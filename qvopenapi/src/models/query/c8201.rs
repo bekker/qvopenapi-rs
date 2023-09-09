@@ -1,8 +1,12 @@
 use std::ffi::c_char;
 use std::mem::size_of;
 
-use crate::{QueryRequest, QvOpenApiError, message::from_cp949};
-use crate::bindings::*;
+use serde::Serialize;
+use serde_json::{Value, json};
+
+use crate::utils::from_cp949;
+use crate::{QueryRequest, QvOpenApiError};
+use qvopenapi_bindings::{Tc8201InBlock, Tc8201OutBlock, Tc8201OutBlock1};
 
 pub const TR_CODE_C8201: &str = "c8201";
 
@@ -25,10 +29,10 @@ pub fn make_c8201_request(
 	return Ok(req);
 }
 
-pub fn parse_c8201_response(block_data: *const c_char, _block_len: i32) -> Result<C8201Response, QvOpenApiError> {
+pub fn parse_c8201_response(block_data: *const c_char, _block_len: i32) -> Result<Value, QvOpenApiError> {
 	unsafe {
 		let res = block_data as *const Tc8201OutBlock;
-		Ok(C8201Response {
+		Ok(json!(C8201Response {
 			dpsit_amtz16: from_cp949(&(*res).dpsit_amtz16).parse().unwrap(),
 			mrgn_amtz16: from_cp949(&(*res).dpsit_amtz16).parse().unwrap(),
 			mgint_npaid_amtz16: from_cp949(&(*res).mgint_npaid_amtz16).parse().unwrap(),
@@ -59,11 +63,11 @@ pub fn parse_c8201_response(block_data: *const c_char, _block_len: i32) -> Resul
 			noticez30: from_cp949(&(*res).noticez30).parse().unwrap(),
 			tot_eal_plsz18: from_cp949(&(*res).tot_eal_plsz18).parse().unwrap(),
 			pft_rtz15: from_cp949(&(*res).pft_rtz15).parse().unwrap(),
- 		})
+ 		}))
 	}
 }
 
-pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Result<Vec<C8201Response1>, QvOpenApiError> {
+pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Result<Value, QvOpenApiError> {
 	unsafe {
 		let block_count = block_len as usize / size_of::<Tc8201OutBlock1>();
 		let res: &[Tc8201OutBlock1] = core::slice::from_raw_parts(block_data as *const Tc8201OutBlock1, block_count);
@@ -91,14 +95,18 @@ pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Resul
 				 })
             })
             .collect();
-		ret
+
+		let results: Result<Vec<C8201Response1>, QvOpenApiError> = ret
 			.into_iter()
-			.collect()
+			.collect();
+		Ok(json!(C8201Response1Vec {
+			results: results?
+		}))
 	}
 }
 
-#[derive(Debug, Clone)]
-pub struct C8201Response {
+#[derive(Debug, Clone, Serialize)]
+struct C8201Response {
 	pub dpsit_amtz16: i64, //예수금
     pub mrgn_amtz16: i64, //신용융자금
     pub mgint_npaid_amtz16: i64, //이자미납금
@@ -131,8 +139,13 @@ pub struct C8201Response {
     pub pft_rtz15: String, //수익율
 }
 
-#[derive(Debug, Clone)]
-pub struct C8201Response1 {
+#[derive(Debug, Clone, Serialize)]
+struct C8201Response1Vec {
+	pub results: Vec<C8201Response1>
+}
+
+#[derive(Debug, Clone, Serialize)]
+struct C8201Response1 {
 	pub issue_codez6: String, //종목번호
     pub issue_namez40: String, //종목명
     pub bal_typez6: String, //잔고유형

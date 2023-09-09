@@ -1,14 +1,10 @@
 use std::{sync::{Arc, RwLock, Mutex}, collections::VecDeque};
 
-use crate::*;
+use crate::{*, window_mgr::message_const::*};
 
-use window_mgr::post_message_to_window;
-
-pub trait QvOpenApiClientEventHandleable {
+pub trait AbstractQvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler>;
-}
 
-pub trait AbstractQvOpenApiClient: QvOpenApiClientEventHandleable {
     fn set_hwnd(&self, new_hwnd: isize);
 
     fn on_connect(&mut self, callback: Box<dyn Fn(Arc<ConnectResponse>) + Send + Sync>) {
@@ -60,28 +56,16 @@ pub trait AbstractQvOpenApiClient: QvOpenApiClientEventHandleable {
         }))
     }
 
-    fn get_balance(
-        &self,
-        tr_index: i32,
-        account_index: i32,
-        balance_type: char,
-    ) -> Result<(), QvOpenApiError> {
-        self.query(Arc::new(make_c8201_request(tr_index, account_index, balance_type)?))
-    }
-
     fn query(
         &self,
         req: Arc<dyn QvOpenApiRequest>
     ) -> Result<(), QvOpenApiError>;
 }
 
-impl QvOpenApiClientEventHandleable for QvOpenApiClient {
+impl AbstractQvOpenApiClient for QvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler> {
         self.handler.clone()
     }
-}
-
-impl AbstractQvOpenApiClient for QvOpenApiClient {
 
     fn set_hwnd(&self, new_hwnd: isize) {
         let mut hwnd = self.handler.hwnd_lock.write().unwrap();
@@ -93,7 +77,7 @@ impl AbstractQvOpenApiClient for QvOpenApiClient {
         let hwnd = self.handler.hwnd_lock.read().unwrap();
         let mut request_queue = self.handler.request_queue_lock.lock().unwrap();
         request_queue.push_back(req);
-        post_message_to_window(
+        window_mgr::post_message_to_window(
             hwnd.unwrap(),
             WM_WMCAEVENT,
             CA_CUSTOM_EXECUTE_POSTED_COMMAND,
@@ -157,7 +141,7 @@ impl QvOpenApiClientMessageHandler {
         let handler = self.message_handler.read().unwrap();
         match u32::try_from(wparam).unwrap() {
             CA_CONNECTED => {
-                let res = message::parse_connect(lparam)?;
+                let res = models::parse_connect(lparam)?;
                 info!(
                     "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
                     res.login_datetime, res.server_name, res.user_id, res.account_count
@@ -180,7 +164,7 @@ impl QvOpenApiClientMessageHandler {
                 Ok(())
             }
             CA_RECEIVEDATA => {
-                let res = message::parse_data(lparam)?;
+                let res: DataResponse = models::parse_data(lparam)?;
                 info!(
                     "CA_RECEIVEDATA [TR{}] {} {}",
                     res.tr_index, res.block_name, res.block_len
@@ -189,7 +173,7 @@ impl QvOpenApiClientMessageHandler {
                 Ok(())
             }
             CA_RECEIVESISE => {
-                let res = message::parse_sise(lparam)?;
+                let res = models::parse_sise(lparam)?;
                 info!(
                     "CA_RECEIVESISE [TR{}] {} {}",
                     res.tr_index, res.block_name, res.block_len
@@ -198,7 +182,7 @@ impl QvOpenApiClientMessageHandler {
                 Ok(())
             }
             CA_RECEIVEMESSAGE => {
-                let res = message::parse_message(lparam)?;
+                let res = models::parse_message(lparam)?;
                 info!(
                     "CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
                     res.tr_index, res.msg_code, res.msg
@@ -207,13 +191,13 @@ impl QvOpenApiClientMessageHandler {
                 Ok(())
             }
             CA_RECEIVECOMPLETE => {
-                let res = message::parse_complete(lparam)?;
+                let res = models::parse_complete(lparam)?;
                 info!("CA_RECEIVECOMPLETE [TR{}]", res);
                 (handler.on_complete)(res);
                 Ok(())
             }
             CA_RECEIVEERROR => {
-                let res = message::parse_error(lparam)?;
+                let res = models::parse_error(lparam)?;
                 info!("CA_RECEIVEERROR [TR{}] \"{}\"", res.tr_index, res.error_msg);
                 (handler.on_error)(&res);
                 Ok(())

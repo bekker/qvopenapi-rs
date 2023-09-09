@@ -9,7 +9,7 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
 
-use crate::{*, client::QvOpenApiClientMessageHandler};
+use crate::*;
 
 lazy_static! {
     static ref MESSAGE_HANDLER_MAP_LOCK: RwLock<HashMap<isize, Arc<QvOpenApiClientMessageHandler>>> =

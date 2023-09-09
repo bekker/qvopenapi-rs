@@ -1,4 +1,3 @@
-use crate::error::*;
 use crate::*;
 
 use log::*;
@@ -49,7 +48,7 @@ pub fn connect(
     password: &str,
     cert_password: &str,
 ) -> Result<(), QvOpenApiError> {
-    let msg = crate::WM_WMCAEVENT;
+    let msg = crate::window_mgr::message_const::WM_WMCAEVENT;
     let media_type = match account_type {
         AccountType::QV => 'P',
         AccountType::NAMUH => 'T',
