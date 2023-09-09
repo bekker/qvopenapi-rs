@@ -2,9 +2,8 @@
 
 members = [
     "qvopenapi",
-    "qvopenapi-future",
+    "qvopenapi-bindings",
     "qvopenapi-http",
-    "qvopenapi-mock",
     "qvopenapi-sys",
 ]
 

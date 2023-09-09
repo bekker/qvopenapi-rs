@@ -6,6 +6,7 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+qvopenapi-bindings = { path = "../qvopenapi-bindings" }
 qvopenapi-sys = { path = "../qvopenapi-sys" }
 custom_error = { workspace = true }
 libloading = { workspace = true }
@@ -23,9 +24,6 @@ windows = { workspace = true }
 [dev-dependencies]
 env_logger = { workspace = true }
 rpassword = { workspace = true }
-
-[build-dependencies]
-bindgen = "0.53.1"
 
 [features]
 disable-unwind = ["qvopenapi-sys/disable-unwind"]

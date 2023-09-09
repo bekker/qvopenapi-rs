@@ -1,4 +1,5 @@
 extern crate qvopenapi_sys;
+extern crate qvopenapi_bindings;
 #[macro_use]
 extern crate lazy_static;
 mod basic_structs;
@@ -11,15 +12,7 @@ mod window_mgr;
 mod wmca_lib;
 mod client;
 
-#[allow(
-    non_upper_case_globals,
-    non_camel_case_types,
-    non_snake_case,
-    dead_code,
-    deref_nullptr,
-)]
-mod bindings;
-
+use qvopenapi_bindings as bindings;
 pub use error::*;
 use log::{debug, info};
 pub use query::*;

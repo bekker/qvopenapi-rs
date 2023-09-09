@@ -14,8 +14,5 @@ serde_json = { workspace = true }
 tokio = { workspace = true }
 warp = "0.3.5"
 
-[dev-dependencies]
-qvopenapi-mock = { path = "../qvopenapi-mock" }
-
 [features]
 disable-unwind = [ "qvopenapi/disable-unwind" ]

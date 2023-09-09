@@ -987,7 +987,6 @@ dependencies = [
 name = "qvopenapi"
 version = "0.1.0"
 dependencies = [
- "bindgen",
  "chrono",
  "custom_error",
  "encoding",
@@ -996,6 +995,7 @@ dependencies = [
  "libloading 0.8.0",
  "log",
  "once_cell",
+ "qvopenapi-bindings",
  "qvopenapi-sys",
  "rpassword",
  "strum",
@@ -1004,20 +1004,20 @@ dependencies = [
 ]
 
 [[package]]
-name = "qvopenapi-future"
+name = "qvopenapi-bindings"
 version = "0.1.0"
 dependencies = [
+ "bindgen",
+ "chrono",
  "custom_error",
- "env_logger 0.10.0",
+ "encoding",
  "lazy_static",
  "libloading 0.8.0",
  "log",
- "qvopenapi",
- "qvopenapi-mock",
- "rpassword",
+ "once_cell",
+ "qvopenapi-sys",
+ "strum",
  "strum_macros",
- "tokio",
- "windows",
 ]
 
 [[package]]
@@ -1027,23 +1027,10 @@ dependencies = [
  "env_logger 0.10.0",
  "log",
  "qvopenapi",
- "qvopenapi-mock",
  "serde",
  "serde_json",
  "tokio",
  "warp",
-]
-
-[[package]]
-name = "qvopenapi-mock"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "custom_error",
- "lazy_static",
- "log",
- "qvopenapi",
- "strum_macros",
 ]
 
 [[package]]
