@@ -18,6 +18,7 @@ custom_error! {#[derive(Clone)] pub QvOpenApiError
     AlreadyConnectedError = "Already connected",
     UnimplementedBlockError{ block_name: String } = "Unimplemented block {block_name}",
     TransactionPoolFullError = "Transaction pool full",
+    JsonParseError{ message: String } = "Failed to parse json: {message}",
 }
 
 impl From<libloading::Error> for QvOpenApiError {
@@ -36,5 +37,11 @@ impl From<windows::core::Error> for QvOpenApiError {
 impl From<chrono::ParseError> for QvOpenApiError {
     fn from(_e: chrono::ParseError) -> Self {
         QvOpenApiError::ParseDateTimeError
+    }
+}
+
+impl From<serde_json::Error> for QvOpenApiError {
+    fn from(cause: serde_json::Error) -> Self {
+        QvOpenApiError::JsonParseError{ message: cause.to_string() }
     }
 }

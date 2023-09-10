@@ -47,7 +47,7 @@ pub fn parse_sise(lparam: isize) -> std::result::Result<DataResponse, QvOpenApiE
 fn parse_block(block_name: &str, block_data: *const c_char, block_len: i32) -> Result<Value, QvOpenApiError> {
     match block_name {
         BLOCK_NAME_C8201_OUT => parse_c8201_response(block_data, block_len),
-        BLOCK_NAME_C8201_OUT1_VEC => parse_c8201_response1(block_data, block_len),
+        BLOCK_NAME_C8201_OUT1_ARRAY => parse_c8201_response1(block_data, block_len),
         _ => {
             Err(QvOpenApiError::UnimplementedBlockError { block_name: block_name.into() })
         }

@@ -1,5 +1,7 @@
 use std::{sync::{Arc, RwLock, Mutex}, collections::VecDeque};
 
+use serde_json::to_string_pretty;
+
 use crate::{*, window_mgr::message_const::*};
 
 pub trait QvOpenApiRequest: Send + Sync {
@@ -14,36 +16,36 @@ pub trait AbstractQvOpenApiClient {
 
     fn set_hwnd(&self, new_hwnd: isize);
 
-    fn on_connect(&mut self, callback: Box<dyn Fn(Arc<ConnectResponse>) + Send + Sync>) {
-        self.get_handler().message_handler.write().unwrap().on_connect = callback;
+    fn on_connect(&mut self, callback: Box<dyn FnMut(&ConnectResponse) + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_connect = callback;
     }
 
-    fn on_disconnect(&mut self, callback: fn()) {
-        self.get_handler().message_handler.write().unwrap().on_disconnect = callback;
+    fn on_disconnect(&mut self, callback: Box<dyn FnMut() + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_disconnect = callback;
     }
 
-    fn on_socket_error(&mut self, callback: fn()) {
-        self.get_handler().message_handler.write().unwrap().on_socket_error = callback;
+    fn on_socket_error(&mut self, callback: Box<dyn FnMut() + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_socket_error = callback;
     }
 
-    fn on_data(&mut self, callback: fn(&DataResponse)) {
-        self.get_handler().message_handler.write().unwrap().on_data = callback;
+    fn on_data(&mut self, callback: Box<dyn FnMut(&DataResponse) + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_data = callback;
     }
 
-    fn on_sise(&mut self, callback: fn(&DataResponse)) {
-        self.get_handler().message_handler.write().unwrap().on_sise = callback;
+    fn on_sise(&mut self, callback: Box<dyn FnMut(&DataResponse) + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_sise = callback;
     }
 
-    fn on_message(&mut self, callback: fn(&MessageResponse)) {
-        self.get_handler().message_handler.write().unwrap().on_message = callback;
+    fn on_message(&mut self, callback: Box<dyn FnMut(&MessageResponse) + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_message = callback;
     }
 
-    fn on_complete(&mut self, callback: fn(i32)) {
-        self.get_handler().message_handler.write().unwrap().on_complete = callback;
+    fn on_complete(&mut self, callback: Box<dyn FnMut(i32) + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_complete = callback;
     }
 
-    fn on_error(&mut self, callback: fn(&ErrorResponse)) {
-        self.get_handler().message_handler.write().unwrap().on_error = callback;
+    fn on_error(&mut self, callback: Box<dyn FnMut(&ErrorResponse) + Send>) {
+        self.get_handler().message_handler.lock().unwrap().on_error = callback;
     }
 
     fn connect(
@@ -100,7 +102,7 @@ pub struct QvOpenApiClient {
 
 pub struct QvOpenApiClientMessageHandler {
     hwnd_lock: RwLock<Option<isize>>,
-    pub message_handler: RwLock<QvOpenApiClientMessageCallbacks>,
+    pub message_handler: Mutex<QvOpenApiClientMessageCallbacks>,
     request_queue_lock: Mutex<VecDeque<Arc<dyn QvOpenApiRequest>>>,
 }
 
@@ -108,15 +110,15 @@ impl QvOpenApiClientMessageHandler {
     pub fn new() -> QvOpenApiClientMessageHandler {
         QvOpenApiClientMessageHandler {
             hwnd_lock: RwLock::new(None),
-            message_handler: RwLock::new(QvOpenApiClientMessageCallbacks {
+            message_handler: Mutex::new(QvOpenApiClientMessageCallbacks {
                 on_connect: Box::new(|_| {}),
-                on_disconnect: || {},
-                on_socket_error: || {},
-                on_data: |_| {},
-                on_sise: |_| {},
-                on_message: |_| {},
-                on_complete: |_| {},
-                on_error: |_| {},
+                on_disconnect: Box::new(|| {}),
+                on_socket_error: Box::new(|| {}),
+                on_data: Box::new(|_| {}),
+                on_sise: Box::new(|_| {}),
+                on_message: Box::new(|_| {}),
+                on_complete: Box::new(|_| {}),
+                on_error: Box::new(|_| {}),
             }),
             request_queue_lock: Mutex::new(VecDeque::new()),
         }
@@ -124,14 +126,14 @@ impl QvOpenApiClientMessageHandler {
 }
 
 pub struct QvOpenApiClientMessageCallbacks {
-    pub on_connect: Box<dyn Fn(Arc<ConnectResponse>) + Send + Sync>,
-    pub on_disconnect: fn(),
-    pub on_socket_error: fn(),
-    pub on_data: fn(&DataResponse),
-    pub on_sise: fn(&DataResponse),
-    pub on_message: fn(&MessageResponse),
-    pub on_complete: fn(tr_index: i32),
-    pub on_error: fn(&ErrorResponse),
+    pub on_connect: Box<dyn FnMut(&ConnectResponse) + Send>,
+    pub on_disconnect: Box<dyn FnMut() + Send >,
+    pub on_socket_error: Box<dyn FnMut() + Send>,
+    pub on_data: Box<dyn FnMut(&DataResponse) + Send>,
+    pub on_sise: Box<dyn FnMut(&DataResponse) + Send>,
+    pub on_message: Box<dyn FnMut(&MessageResponse) + Send>,
+    pub on_complete: Box<dyn FnMut(i32) + Send>,
+    pub on_error: Box<dyn FnMut(&ErrorResponse) + Send>,
 }
 
 impl QvOpenApiClient {
@@ -145,53 +147,39 @@ impl QvOpenApiClient {
 impl QvOpenApiClientMessageHandler {
     pub fn on_wmca_msg(&self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
         debug!("on_wmca_msg {} {}", wparam, lparam);
-        let handler = self.message_handler.read().unwrap();
+        let mut handler = self.message_handler.lock().unwrap();
         match u32::try_from(wparam).unwrap() {
             CA_CONNECTED => {
                 let res = models::parse_connect(lparam)?;
-                info!(
-                    "CA_CONNECT (\"{}\", \"{}\", \"{}\", \"{}\")",
-                    res.login_timestamp, res.server_name, res.user_id, res.account_count
-                );
-                (handler.on_connect)(Arc::new(res));
+                debug!("CA_CONNECT {}", to_string_pretty(&res)?);
+                (handler.on_connect)(&res);
                 Ok(())
             }
             CA_DISCONNECTED => {
-                info!(
-                    "CA_DISCONNECTED"
-                );
+                debug!("CA_DISCONNECTED");
                 (handler.on_disconnect)();
                 Ok(())
             }
             CA_SOCKETERROR => {
-                info!(
-                    "CA_SOCKETERROR"
-                );
+                debug!("CA_SOCKETERROR");
                 (handler.on_socket_error)();
                 Ok(())
             }
             CA_RECEIVEDATA => {
-                let res: DataResponse = models::parse_data(lparam)?;
-                info!(
-                    "CA_RECEIVEDATA [TR{}] {} {}",
-                    res.tr_index, res.block_name, res.block_len
-                );
+                let res = models::parse_data(lparam)?;
+                debug!("CA_RECEIVEDATA [TR{}] {}", res.tr_index, to_string_pretty(&res)?);
                 (handler.on_data)(&res);
                 Ok(())
             }
             CA_RECEIVESISE => {
                 let res = models::parse_sise(lparam)?;
-                info!(
-                    "CA_RECEIVESISE [TR{}] {} {}",
-                    res.tr_index, res.block_name, res.block_len
-                );
+                debug!("CA_RECEIVESISE [TR{}] {}", res.tr_index, to_string_pretty(&res)?);
                 (handler.on_sise)(&res);
                 Ok(())
             }
             CA_RECEIVEMESSAGE => {
                 let res = models::parse_message(lparam)?;
-                info!(
-                    "CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
+                debug!("CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
                     res.tr_index, res.msg_code, res.msg
                 );
                 (handler.on_message)(&res);
@@ -199,13 +187,13 @@ impl QvOpenApiClientMessageHandler {
             }
             CA_RECEIVECOMPLETE => {
                 let res = models::parse_complete(lparam)?;
-                info!("CA_RECEIVECOMPLETE [TR{}]", res);
+                debug!("CA_RECEIVECOMPLETE [TR{}]", res);
                 (handler.on_complete)(res);
                 Ok(())
             }
             CA_RECEIVEERROR => {
                 let res = models::parse_error(lparam)?;
-                info!("CA_RECEIVEERROR [TR{}] \"{}\"", res.tr_index, res.error_msg);
+                debug!("CA_RECEIVEERROR [TR{}] \"{}\"", res.tr_index, res.error_msg);
                 (handler.on_error)(&res);
                 Ok(())
             }

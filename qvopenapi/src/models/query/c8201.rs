@@ -87,9 +87,9 @@ pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Resul
 		let block_count = block_len as usize / size_of::<Tc8201OutBlock1>();
 		let res: &[Tc8201OutBlock1] = core::slice::from_raw_parts(block_data as *const Tc8201OutBlock1, block_count);
 
-        let ret: Vec<Result<C8201Response1, QvOpenApiError>> = res.iter()
+        let ret: Vec<C8201Response1> = res.iter()
             .map(|res| {
-                Ok(C8201Response1 {
+                C8201Response1 {
 					issue_codez6: from_cp949(&(*res).issue_codez6).parse().unwrap(),
 					issue_namez40: from_cp949(&(*res).issue_namez40).trim().into(),
 					bal_typez6: from_cp949(&(*res).bal_typez6).parse().unwrap(),
@@ -107,16 +107,10 @@ pub fn parse_c8201_response1(block_data: *const c_char, block_len: i32) -> Resul
 					issue_mgamt_ratez6: from_cp949(&(*res).issue_mgamt_ratez6).parse().unwrap(),
 					medo_slby_amtz16: from_cp949(&(*res).medo_slby_amtz16).parse().unwrap(),
 					post_lsnpf_amtz16: from_cp949(&(*res).post_lsnpf_amtz16).parse().unwrap(),
-				 })
+				 }
             })
             .collect();
-
-		let results: Result<Vec<C8201Response1>, QvOpenApiError> = ret
-			.into_iter()
-			.collect();
-		Ok(json!(C8201Response1Vec {
-			results: results?
-		}))
+		Ok(json!(ret))
 	}
 }
 
@@ -155,11 +149,6 @@ struct C8201Response {
 }
 
 #[derive(Debug, Clone, Serialize)]
-struct C8201Response1Vec {
-	pub results: Vec<C8201Response1>
-}
-
-#[derive(Debug, Clone, Serialize)]
 struct C8201Response1 {
 	pub issue_codez6: String, //종목번호
     pub issue_namez40: String, //종목명
@@ -181,4 +170,4 @@ struct C8201Response1 {
 }
 
 pub const BLOCK_NAME_C8201_OUT: &str = "c8201OutBlock";
-pub const BLOCK_NAME_C8201_OUT1_VEC: &str = "c8201OutBlock1";
+pub const BLOCK_NAME_C8201_OUT1_ARRAY: &str = "c8201OutBlock1";

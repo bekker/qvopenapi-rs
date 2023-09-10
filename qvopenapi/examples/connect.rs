@@ -1,4 +1,4 @@
-use std::{time::Duration, io::Write, sync::Arc};
+use std::{time::Duration, io::Write};
 
 use ::log::*;
 use qvopenapi::{QvOpenApiClient, QvOpenApiError, WindowHelper, AbstractQvOpenApiClient, C8201Request};
@@ -22,26 +22,20 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     let password = find_env_or_get_input("QV_PW")?;
     let cert_password = find_env_or_get_input("QV_CERTPW")?;
 
+    // Initialize DLL
     qvopenapi::init()?;
 
+    // Create a window
     let mut client = QvOpenApiClient::new();
     let mut window_helper = WindowHelper::new();
-
     let hwnd = window_helper.run(&client)?;
+
+    // Setup callbacks
+    const BALANCE_TR_INDEX: i32 = 3;
     client.on_connect(Box::new(|res| {
         info!("Connected: account count {}", res.account_count);
     }));
-    client.connect(
-        hwnd,
-        qvopenapi::AccountType::NAMUH,
-        id.as_str(),
-        password.as_str(),
-        cert_password.as_str(),
-    )?;
-    std::thread::sleep(Duration::from_millis(3000));
-
-    const BALANCE_TR_INDEX: i32 = 3;
-    client.on_data(|res| {
+    client.on_data(Box::new(|res| {
         info!("tr_index: {}, block_name: {}", res.tr_index, res.block_name.as_str());
         if res.tr_index == BALANCE_TR_INDEX {
             match res.block_name.as_str() {
@@ -49,9 +43,8 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
                     let data = &res.block_data;
                     info!("출금가능금액: {}", data["chgm_pos_amtz16"])
                 }
-                qvopenapi::BLOCK_NAME_C8201_OUT1_VEC => {
-                    let results = res.block_data["results"].as_array().unwrap();
-                    for data in results.iter() {
+                qvopenapi::BLOCK_NAME_C8201_OUT1_ARRAY => {
+                    for data in res.block_data.as_array().unwrap().iter() {
                         info!("종목번호: {}, 종목명: {}, 보유수: {}", data["issue_codez6"], data["issue_namez40"], data["bal_qtyz16"])
                     }
                 }
@@ -60,7 +53,17 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
                 }
             }
         }
-    });
+    }));
+
+    // Connect and query C8201 (계좌 잔고)
+    client.connect(
+        hwnd,
+        qvopenapi::AccountType::NAMUH,
+        id.as_str(),
+        password.as_str(),
+        cert_password.as_str(),
+    )?;
+    std::thread::sleep(Duration::from_millis(3000));
 
     client.query(C8201Request::create(BALANCE_TR_INDEX, 1, '1'))?;
     std::thread::sleep(Duration::from_millis(3000));
