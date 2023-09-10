@@ -19,28 +19,26 @@ pub struct C8201Request {
 }
 
 impl C8201Request {
-	pub fn create(tr_index: i32, account_index: i32, balance_type: char) -> Arc<RawQueryRequest<Tc8201InBlock>> {
-		Arc::new(C8201Request {
+	pub fn new(tr_index: i32, account_index: i32, balance_type: char) -> C8201Request {
+		C8201Request {
 			tr_index,
 			account_index,
 			balance_type
-		}.into())
+		}
 	}
-}
 
-impl From<C8201Request> for RawQueryRequest<Tc8201InBlock> {
-	fn from(req: C8201Request) -> Self {
-		RawQueryRequest {
-			tr_index: req.tr_index,
+	pub fn into_raw(&self) -> Arc<RawQueryRequest<Tc8201InBlock>> {
+		Arc::new(RawQueryRequest {
+			tr_index: self.tr_index,
 			tr_code: TR_CODE_C8201,
-			account_index: req.account_index,
+			account_index: self.account_index,
 			raw_input: Box::new(Tc8201InBlock {
 				pswd_noz44: [' ' as c_char; 44],
 				_pswd_noz44: ' ' as c_char,
-				bnc_bse_cdz1: [req.balance_type as c_char],
+				bnc_bse_cdz1: [self.balance_type as c_char],
 				_bnc_bse_cdz1: ' ' as c_char,
 			})
-		}
+		})
 	}
 }
 

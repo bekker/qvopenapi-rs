@@ -65,7 +65,7 @@ fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     )?;
     std::thread::sleep(Duration::from_millis(3000));
 
-    client.query(C8201Request::create(BALANCE_TR_INDEX, 1, '1'))?;
+    client.query(C8201Request::new(BALANCE_TR_INDEX, 1, '1').into_raw())?;
     std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }

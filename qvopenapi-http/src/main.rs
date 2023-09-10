@@ -1,97 +1,40 @@
-use std::convert::Infallible;
+use std::sync::Arc;
 
+use callback::setup_callbacks;
 use ::log::*;
-use serde::{Deserialize, Serialize};
-use warp::{
-    http::{StatusCode},
-    *,
-};
+use warp::*;
 
 extern crate qvopenapi;
 extern crate serde;
-use qvopenapi::{AccountType, QvOpenApiError};
-
-#[derive(Deserialize, Serialize)]
-struct MessageResponse {
-    message: String,
-}
-
-#[derive(Deserialize, Serialize)]
-struct ConnectRequest {
-    id: String,
-    password: String,
-    cert_password: String,
-}
+mod callback;
+mod error;
+mod routes;
+mod response;
+use qvopenapi::{QvOpenApiError, QvOpenApiClient, WindowHelper};
 
 async fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
     env_logger::init_from_env(
         env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
     );
-    qvopenapi::init()?;
+    let (hwnd, client) = set_up_client()?;
 
-    let connect_filter = post()
-        .and(path("connect"))
-        .and(body::json())
-        .and_then(connect);
-
-    serve(connect_filter).run(([127, 0, 0, 1], 18000)).await;
+    serve(routes::filter(hwnd, client))
+        .run(([127, 0, 0, 1], 18000)).await;
 
     Ok(())
 }
 
-async fn connect(request: ConnectRequest) -> Result<impl Reply, Infallible> {
-    let ret = qvopenapi::connect(
-        AccountType::NAMUH,
-        request.id.as_str(),
-        request.password.as_str(),
-        request.cert_password.as_str(),
-    )
-    .await;
+fn set_up_client() -> Result<(isize, Arc<QvOpenApiClient>), QvOpenApiError> {
+    // Initialize DLL
+    qvopenapi::init()?;
 
-    if ret.is_err() {
-        return convert_error(ret.err().unwrap());
-    }
+    // Create a window
+    let mut client = QvOpenApiClient::new();
+    let mut window_helper = WindowHelper::new();
+    let hwnd = window_helper.run(&client)?;
+    setup_callbacks(&mut client);
 
-    let connect_dto = ret.unwrap();
-
-    Ok(reply::with_status(
-        reply::json(&ConnectResponse {
-            login_datetime: connect_dto.login_datetime.to_rfc3339(),
-            server_name: connect_dto.server_name.clone(),
-            user_id: connect_dto.user_id.clone(),
-            account_count: connect_dto.account_count,
-            account_infoes: connect_dto
-                .account_infoes
-                .iter()
-                .map(|acc_info_dto| AccountInfoResponse {
-                    account_no: acc_info_dto.account_no.clone(),
-                    account_name: acc_info_dto.account_name.clone(),
-                    act_pdt_cdz3: acc_info_dto.act_pdt_cdz3.clone(),
-                    amn_tab_cdz4: acc_info_dto.amn_tab_cdz4.clone(),
-                    expr_datez8: acc_info_dto.expr_datez8.clone(),
-                    bulk_granted: acc_info_dto.bulk_granted,
-                })
-                .collect(),
-        }),
-        StatusCode::OK,
-    ))
-}
-
-fn convert_error(err: QvOpenApiError) -> Result<reply::WithStatus<reply::Json>, Infallible> {
-    match err {
-        QvOpenApiError::AlreadyConnectedError => Ok(reply::with_status(
-            reply::json(&MessageResponse {
-                message: String::from(QvOpenApiError::AlreadyConnectedError.to_string()),
-            }),
-            StatusCode::BAD_REQUEST,
-        )),
-        err => Ok(reply::with_status(
-            reply::json(&MessageResponse {
-                message: String::from(err.to_string()),
-            }),
-            StatusCode::INTERNAL_SERVER_ERROR,
-        )),
-    }
+    Ok((hwnd, Arc::new(client)))
 }
 
 #[tokio::main]
