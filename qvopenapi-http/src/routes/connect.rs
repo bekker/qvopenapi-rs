@@ -1,7 +1,7 @@
 use std::{convert::Infallible, sync::Arc};
 
 use qvopenapi::{ConnectRequest, QvOpenApiClient, AbstractQvOpenApiClient};
-use warp::{filters::{method::post, path::path, body, BoxedFilter}, Filter, reply::{Reply, self}, http::StatusCode};
+use warp::{filters::{method::post, body, BoxedFilter}, Filter, reply::{Reply, self}, http::StatusCode};
 
 use crate::{response::HttpMessageResponse, error};
 
@@ -9,7 +9,7 @@ pub fn filter_connect(hwnd: isize, client: Arc<QvOpenApiClient>) -> BoxedFilter<
     let cloned = client.clone();
     let handler = move |req: ConnectRequest| connect(hwnd, cloned.clone(), req);
     post()
-        .and(path("connect"))
+        .and(warp::path!("connect"))
         .and(body::json())
         .and_then(handler)
         .boxed()
