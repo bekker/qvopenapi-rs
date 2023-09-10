@@ -15,6 +15,8 @@ custom_error! {#[derive(Clone)] pub QvOpenApiError
     NotConnectedError = "Not connected",
     QvApiMessageError{ message_code: String, message: String } = "[{message_code}] {message}",
     ParseDateTimeError = "Failed to parse datetime",
+    ParseNumberError{ input: String } = "Failed to parse [{input}] to number",
+    ParseRatioError{ input: String } = "Failed to parse [{input}] to ratio",
     AlreadyConnectedError = "Already connected",
     UnimplementedBlockError{ block_name: String } = "Unimplemented block {block_name}",
     TransactionPoolFullError = "Transaction pool full",
