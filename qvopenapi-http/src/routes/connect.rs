@@ -1,5 +1,6 @@
 use std::{convert::Infallible, sync::Arc};
 
+use log::debug;
 use qvopenapi::{ConnectRequest, QvOpenApiClient, AbstractQvOpenApiClient};
 use warp::{filters::{method::post, body, BoxedFilter}, Filter, reply::{Reply, self}, http::StatusCode};
 
@@ -16,8 +17,9 @@ pub fn filter_connect(hwnd: isize, client: Arc<QvOpenApiClient>) -> BoxedFilter<
 }
 
 async fn connect(hwnd: isize, client: Arc<QvOpenApiClient>, request: ConnectRequest) -> Result<impl Reply, Infallible> {
+    debug!("Connecting...");
     let ret = client.connect(hwnd, request.account_type, &request.id, &request.password, &request.cert_password);
-
+    debug!("Connect request sent");
     if ret.is_err() {
         return error::convert_error(ret.err().unwrap());
     }

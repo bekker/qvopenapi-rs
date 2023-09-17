@@ -1,4 +1,11 @@
 .git
-target
 dlls
 .env.local
+
+target/debug
+target/release
+target/**/build
+target/**/deps
+target/**/.fingerprint
+target/**/.incremental
+target/**/qvopenapi.qv

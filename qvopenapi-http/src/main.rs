@@ -13,13 +13,10 @@ mod response;
 use qvopenapi::{QvOpenApiError, QvOpenApiClient, WindowHelper};
 
 async fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
-    env_logger::init_from_env(
-        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
-    );
     let (hwnd, client) = set_up_client()?;
 
     serve(routes::filter(hwnd, client))
-        .run(([127, 0, 0, 1], 18000)).await;
+        .run(([0, 0, 0, 0], 18000)).await;
 
     Ok(())
 }
@@ -37,12 +34,26 @@ fn set_up_client() -> Result<(isize, Arc<QvOpenApiClient>), QvOpenApiError> {
     Ok((hwnd, Arc::new(client)))
 }
 
-#[tokio::main]
-async fn main() {
-    match do_run().await {
-        Ok(_) => {}
-        Err(e) => {
-            error!("Error occured: {}", e);
-        }
-    }
+fn main() {
+    env_logger::init_from_env(
+        env_logger::Env::default().filter_or(env_logger::DEFAULT_FILTER_ENV, "debug"),
+    );
+    debug!("Starting up tokio runtime...");
+
+    tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .map_or_else(|e| {
+            error!("Tokio runtime init error: {}", e.to_string())
+        }, |rt| {
+            debug!("Tokio runtime init complete");
+            rt.block_on(async move {
+                match do_run().await {
+                    Ok(_) => {}
+                    Err(e) => {
+                        error!("Error occured: {}", e);
+                    }
+                }
+            });
+        });
 }

@@ -24,6 +24,8 @@ WORKDIR /namu
 
 USER wineuser
 
+RUN wine cmd.exe /c "echo winesetup complete"
+
 # ============== Download DLL
 FROM setup AS dll
 
@@ -32,31 +34,16 @@ RUN apt-get install -y curl
 USER wineuser
 
 RUN curl -O https://download.nhqv.com/download/iflgtrading/openapi.qv.zip && \
-    unzip openapi.qv.zip && \
+    unzip openapi.qv.zip -d openapi.qv && \
     cp -R openapi.qv/bin bin && \
     rm -R openapi.qv && rm openapi.qv.zip
-
-# ============== Build
-FROM rust:1.69.0-buster AS builder
-
-RUN apt-get update
-RUN apt-get install -y gcc-mingw-w64-i686 libclang-dev
-
-ENV RUST_TARGET="i686-pc-windows-gnu"
-RUN rustup target add ${RUST_TARGET}
-
-WORKDIR /usr/src/qvopenapi-rs
-COPY . .
-
-RUN cargo update
-RUN cargo rustc -p qvopenapi-http --release --target ${RUST_TARGET} --features "disable-unwind" -- -C "panic=abort"
 
 # ============== Container
 FROM setup
 
 RUN ln -s /namu/NPKI /home/wineuser/.wine/drive_c/users/wineuser/AppData/LocalLow/NPKI
 
-COPY --from=builder /usr/src/qvopenapi-rs/target/i686-pc-windows-gnu/release /namu/bin
+COPY target/i686-pc-windows-gnu/release/qvopenapi-http.exe /namu/bin/qvopenapi-http.exe
 COPY --from=dll /namu/bin /namu/bin
 COPY docker/entrypoint.sh /namu/entrypoint.sh
 

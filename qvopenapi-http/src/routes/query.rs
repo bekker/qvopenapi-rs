@@ -1,5 +1,6 @@
 use std::{convert::Infallible, sync::Arc};
 
+use log::debug;
 use qvopenapi::{QvOpenApiClient, AbstractQvOpenApiClient, C8201Request};
 use warp::{filters::{method::post, body, BoxedFilter}, Filter, reply::{Reply, self}, http::StatusCode};
 
@@ -16,7 +17,9 @@ pub fn filter_c8201(client: Arc<QvOpenApiClient>) -> BoxedFilter<(impl Reply,)> 
 }
 
 async fn query_c8201(client: Arc<QvOpenApiClient>, request: C8201Request) -> Result<impl Reply, Infallible> {
+    debug!("Querying...");
     let ret = client.query(request.into_raw());
+    debug!("Querying request sent");
 
     if ret.is_err() {
         return error::convert_error(ret.err().unwrap());
