@@ -30,7 +30,7 @@ RUN wine cmd.exe /c "echo winesetup complete"
 FROM setup AS dll
 
 USER root
-RUN apt-get install -y curl
+RUN apt-get update && apt-get install -y curl
 USER wineuser
 
 RUN curl -O https://download.nhqv.com/download/iflgtrading/openapi.qv.zip && \
