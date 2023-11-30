@@ -1,6 +1,10 @@
 use ::log::*;
 use qvopenapi::{QvOpenApiClient, AbstractQvOpenApiClient};
 
+lazy_static! {
+    
+}
+
 pub fn setup_callbacks(client: &mut QvOpenApiClient) {
     client.on_connect(Box::new(|res| {
         info!("Connected: account count {}", res.account_count);

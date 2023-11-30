@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::ffi::c_char;
 use std::mem::size_of;
 use std::sync::Arc;
@@ -44,38 +45,38 @@ impl C8201Request {
 
 pub fn parse_c8201_response(block_data: *const c_char, _block_len: i32) -> Result<Value, QvOpenApiError> {
 	unsafe {
-		let res = block_data as *const Tc8201OutBlock;
+		let res = &(*(block_data as *const Tc8201OutBlock));
 		Ok(json!(C8201Response {
-			dpsit_amtz16: parse_number(&(*res).dpsit_amtz16)?,
-			mrgn_amtz16: parse_number(&(*res).dpsit_amtz16)?,
-			mgint_npaid_amtz16: parse_number(&(*res).mgint_npaid_amtz16)?,
-			chgm_pos_amtz16: parse_number(&(*res).chgm_pos_amtz16)?,
-			cash_mrgn_amtz16: parse_number(&(*res).cash_mrgn_amtz16)?,
-			subst_mgamt_amtz16: parse_number(&(*res).subst_mgamt_amtz16)?,
-			coltr_ratez6: parse_string(&(*res).coltr_ratez6)?,
-			rcble_amtz16: parse_number(&(*res).rcble_amtz16)?,
-			order_pos_csamtz16: parse_number(&(*res).order_pos_csamtz16)?,
-			ecn_pos_csamtz16: parse_number(&(*res).ecn_pos_csamtz16)?,
-			nordm_loan_amtz16: parse_number(&(*res).nordm_loan_amtz16)?,
-			etc_lend_amtz16: parse_number(&(*res).etc_lend_amtz16)?,
-			subst_amtz16: parse_number(&(*res).subst_amtz16)?,
-			sln_sale_amtz16: parse_number(&(*res).sln_sale_amtz16)?,
-			bal_buy_ttamtz16: parse_number(&(*res).bal_buy_ttamtz16)?,
-			bal_ass_ttamtz16: parse_number(&(*res).bal_ass_ttamtz16)?,
-			asset_tot_amtz16: parse_number(&(*res).asset_tot_amtz16)?,
-			actvt_type10: parse_string(&(*res).actvt_type10)?,
-			lend_amtz16: parse_number(&(*res).lend_amtz16)?,
-			accnt_mgamt_ratez6: parse_string(&(*res).accnt_mgamt_ratez6)?,
-			sl_mrgn_amtz16: parse_number(&(*res).sl_mrgn_amtz16)?,
-			pos_csamt1z16: parse_number(&(*res).pos_csamt1z16)?,
-			pos_csamt2z16: parse_number(&(*res).pos_csamt2z16)?,
-			pos_csamt3z16: parse_number(&(*res).pos_csamt3z16)?,
-			pos_csamt4z16: parse_number(&(*res).pos_csamt4z16)?,
-			dpsit_amtz_d1_16: parse_number(&(*res).dpsit_amtz_d1_16)?,
-			dpsit_amtz_d2_16: parse_number(&(*res).dpsit_amtz_d2_16)?,
-			noticez30: parse_string(&(*res).noticez30)?,
-			tot_eal_plsz18: parse_string(&(*res).tot_eal_plsz18)?,
-			pft_rtz15: parse_ratio(&(*res).pft_rtz15)?,
+			dpsit_amtz16: parse_number(&res.dpsit_amtz16)?,
+			mrgn_amtz16: parse_number(&res.dpsit_amtz16)?,
+			mgint_npaid_amtz16: parse_number(&res.mgint_npaid_amtz16)?,
+			chgm_pos_amtz16: parse_number(&res.chgm_pos_amtz16)?,
+			cash_mrgn_amtz16: parse_number(&res.cash_mrgn_amtz16)?,
+			subst_mgamt_amtz16: parse_number(&res.subst_mgamt_amtz16)?,
+			coltr_ratez6: parse_string(&res.coltr_ratez6)?,
+			rcble_amtz16: parse_number(&res.rcble_amtz16)?,
+			order_pos_csamtz16: parse_number(&res.order_pos_csamtz16)?,
+			ecn_pos_csamtz16: parse_number(&res.ecn_pos_csamtz16)?,
+			nordm_loan_amtz16: parse_number(&res.nordm_loan_amtz16)?,
+			etc_lend_amtz16: parse_number(&res.etc_lend_amtz16)?,
+			subst_amtz16: parse_number(&res.subst_amtz16)?,
+			sln_sale_amtz16: parse_number(&res.sln_sale_amtz16)?,
+			bal_buy_ttamtz16: parse_number(&res.bal_buy_ttamtz16)?,
+			bal_ass_ttamtz16: parse_number(&res.bal_ass_ttamtz16)?,
+			asset_tot_amtz16: parse_number(&res.asset_tot_amtz16)?,
+			actvt_type10: parse_string(&res.actvt_type10)?,
+			lend_amtz16: parse_number(&res.lend_amtz16)?,
+			accnt_mgamt_ratez6: parse_string(&res.accnt_mgamt_ratez6)?,
+			sl_mrgn_amtz16: parse_number(&res.sl_mrgn_amtz16)?,
+			pos_csamt1z16: parse_number(&res.pos_csamt1z16)?,
+			pos_csamt2z16: parse_number(&res.pos_csamt2z16)?,
+			pos_csamt3z16: parse_number(&res.pos_csamt3z16)?,
+			pos_csamt4z16: parse_number(&res.pos_csamt4z16)?,
+			dpsit_amtz_d1_16: parse_number(&res.dpsit_amtz_d1_16)?,
+			dpsit_amtz_d2_16: parse_number(&res.dpsit_amtz_d2_16)?,
+			noticez30: parse_string(&res.noticez30)?,
+			tot_eal_plsz18: parse_string(&res.tot_eal_plsz18)?,
+			pft_rtz15: parse_ratio(&res.pft_rtz15)?,
  		}))
 	}
 }
@@ -94,23 +95,23 @@ pub fn parse_c8201_response1_array(block_data: *const c_char, block_len: i32) ->
 
 fn parse_c8201_response1(res: &Tc8201OutBlock1) -> Result<C8201Response1, QvOpenApiError> {
 	Ok(C8201Response1 {
-		issue_codez6: parse_string(&(*res).issue_codez6)?,
-		issue_namez40: parse_string(&(*res).issue_namez40)?,
-		bal_typez6: parse_string(&(*res).bal_typez6)?,
-		loan_datez10: parse_string(&(*res).loan_datez10)?,
-		bal_qtyz16: parse_number(&(*res).bal_qtyz16)?,
-		unstl_qtyz16: parse_number(&(*res).unstl_qtyz16)?,
-		slby_amtz16: parse_number(&(*res).slby_amtz16)?,
-		prsnt_pricez16: parse_number(&(*res).prsnt_pricez16)?,
-		lsnpf_amtz16: parse_number(&(*res).lsnpf_amtz16)?,
-		earn_ratez9: parse_ratio(&(*res).earn_ratez9)?,
-		mrgn_codez4: parse_string(&(*res).mrgn_codez4)?,
-		jan_qtyz16: parse_number(&(*res).jan_qtyz16)?,
-		expr_datez10: parse_string(&(*res).expr_datez10)?,
-		ass_amtz16: parse_number(&(*res).ass_amtz16)?,
-		issue_mgamt_ratez6: parse_ratio_str(&(*res).issue_mgamt_ratez6)?,
-		medo_slby_amtz16: parse_number(&(*res).medo_slby_amtz16)?,
-		post_lsnpf_amtz16: parse_number(&(*res).post_lsnpf_amtz16)?,
+		issue_codez6: parse_string(&res.issue_codez6)?,
+		issue_namez40: parse_string(&res.issue_namez40)?,
+		bal_typez6: parse_string(&res.bal_typez6)?,
+		loan_datez10: parse_string(&res.loan_datez10)?,
+		bal_qtyz16: parse_number(&res.bal_qtyz16)?,
+		unstl_qtyz16: parse_number(&res.unstl_qtyz16)?,
+		slby_amtz16: parse_number(&res.slby_amtz16)?,
+		prsnt_pricez16: parse_number(&res.prsnt_pricez16)?,
+		lsnpf_amtz16: parse_number(&res.lsnpf_amtz16)?,
+		earn_ratez9: parse_ratio(&res.earn_ratez9)?,
+		mrgn_codez4: parse_string(&res.mrgn_codez4)?,
+		jan_qtyz16: parse_number(&res.jan_qtyz16)?,
+		expr_datez10: parse_string(&res.expr_datez10)?,
+		ass_amtz16: parse_number(&res.ass_amtz16)?,
+		issue_mgamt_ratez6: parse_ratio_str(&res.issue_mgamt_ratez6)?,
+		medo_slby_amtz16: parse_number(&res.medo_slby_amtz16)?,
+		post_lsnpf_amtz16: parse_number(&res.post_lsnpf_amtz16)?,
 	})
 }
 
@@ -171,3 +172,6 @@ struct C8201Response1 {
 
 pub const BLOCK_NAME_C8201_OUT: &str = "c8201OutBlock";
 pub const BLOCK_NAME_C8201_OUT1_ARRAY: &str = "c8201OutBlock1";
+lazy_static! {
+	pub static ref BLOCKS_C8201: HashSet<&'static str> = HashSet::from([BLOCK_NAME_C8201_OUT, BLOCK_NAME_C8201_OUT1_ARRAY]);
+}
