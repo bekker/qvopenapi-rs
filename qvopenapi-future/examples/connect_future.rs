@@ -46,7 +46,7 @@ async fn do_run() -> Result<(), QvOpenApiError> {
     ).await?;
     info!("connect response: {}", connect_response);
 
-    let query_response = future_client.query(C8201Request::new( 4, '1').into_raw()).await?;
+    let query_response = future_client.query(C8201Request::new( 1, '1').into_raw()).await?;
     info!("query response: {}", query_response);
 
     Ok(())

@@ -13,7 +13,7 @@ use qvopenapi_future::{error::*, QvOpenApiFutureClient};
 async fn do_run() -> Result<(), QvOpenApiError> {
     let client = set_up_client()?;
 
-    serve(routes::filter(client))
+    serve(routes::filter(client.clone()))
         .run(([0, 0, 0, 0], 18000)).await;
 
     Ok(())

@@ -93,3 +93,20 @@ pub struct DataResponse {
     pub block_len: i32,
     pub block_data: Value,
 }
+
+pub struct DisconnectRequest {
+}
+
+impl QvOpenApiRequest for DisconnectRequest {
+    fn before_post(&self) -> Result<(), QvOpenApiError> {
+        Ok(())
+    }
+
+    fn call_lib(&self, _tr_index: i32, _hwnd: isize) -> Result<(), QvOpenApiError> {
+        wmca_lib::disconnect()
+    }
+
+    fn get_tr_code(&self) -> &str {
+        "DISCONNECT"
+    }
+}

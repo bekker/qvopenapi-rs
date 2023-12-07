@@ -22,6 +22,8 @@ custom_error! {#[derive(Clone, Serialize)] pub QvOpenApiError
     UnimplementedBlockError{ block_name: String } = "Unimplemented block {block_name}",
     TransactionPoolFullError = "Transaction pool full",
     JsonParseError{ message: String } = "Failed to parse json: {message}",
+    RequestTimeoutError = "Request timed out",
+    UnknownError = "Unknown error"
 }
 
 impl From<libloading::Error> for QvOpenApiError {

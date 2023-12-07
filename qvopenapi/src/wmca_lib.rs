@@ -99,6 +99,12 @@ pub fn query<T>(
     ))
 }
 
+pub fn disconnect() -> Result<(), QvOpenApiError> {
+    debug!("disconnect");
+
+    c_bool_to_result((get_lib()?.disconnect)())
+}
+
 #[allow(dead_code)]
 pub fn set_account_index_pwd<T>(
     input: &mut T,

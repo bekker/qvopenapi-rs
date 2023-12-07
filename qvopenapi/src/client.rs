@@ -13,6 +13,8 @@ pub trait QvOpenApiRequest: Send + Sync {
 pub trait AbstractQvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler>;
 
+    fn get_hwnd(&self) -> Option<isize>;
+
     fn set_hwnd(&self, new_hwnd: isize);
 
     fn on_connect(&self, callback: Box<dyn FnMut(&ConnectResponse) + Send>) {
@@ -64,6 +66,10 @@ pub trait AbstractQvOpenApiClient {
         }))
     }
 
+    fn disconnect(&self) -> Result<(), QvOpenApiError> {
+        self.query(-1, Arc::new(DisconnectRequest{}))
+    }
+
     fn query(
         &self,
         tr_index: i32,
@@ -74,6 +80,10 @@ pub trait AbstractQvOpenApiClient {
 impl AbstractQvOpenApiClient for QvOpenApiClient {
     fn get_handler(&self) -> Arc<QvOpenApiClientMessageHandler> {
         self.handler.clone()
+    }
+
+    fn get_hwnd(&self) -> Option<isize> {
+        *self.handler.hwnd_lock.read().unwrap()
     }
 
     fn set_hwnd(&self, new_hwnd: isize) {
