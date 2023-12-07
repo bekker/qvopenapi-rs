@@ -2,7 +2,7 @@ use chrono::TimeZone;
 use qvopenapi_bindings::LoginBlock;
 use serde::{Serialize, Deserialize};
 
-use crate::{utils::{from_cp949, SEOUL_TZ}, QvOpenApiError, wmca_lib, client::QvOpenApiRequest};
+use crate::{utils::{from_cp949, SEOUL_TZ}, error::*, wmca_lib, client::QvOpenApiRequest};
 
 pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOpenApiError> {
     let data_block = lparam as *const LoginBlock;
@@ -49,6 +49,7 @@ pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOp
     }
 }
 
+pub const TR_INDEX_CONNECT: i32 = 1;
 pub const TR_CODE_CONNECT: &str = "_connect";
 
 #[derive(Debug, Clone, Deserialize)]
@@ -74,7 +75,7 @@ impl QvOpenApiRequest for ConnectRequest {
         Ok(())
     }
 
-    fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError> {
+    fn call_lib(&self, _tr_index: i32, hwnd: isize) -> Result<(), QvOpenApiError> {
         wmca_lib::connect(
             hwnd,
             self.account_type,
@@ -86,10 +87,6 @@ impl QvOpenApiRequest for ConnectRequest {
 
     fn get_tr_code(&self) -> &str {
         TR_CODE_CONNECT
-    }
-
-    fn get_tr_index(&self) -> i32 {
-        1
     }
 }
 

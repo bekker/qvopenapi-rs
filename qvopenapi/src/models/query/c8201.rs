@@ -1,4 +1,3 @@
-use std::collections::HashSet;
 use std::ffi::c_char;
 use std::mem::size_of;
 use std::sync::Arc;
@@ -7,39 +6,33 @@ use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 
 use crate::utils::{parse_number, parse_string, parse_ratio, parse_ratio_str};
-use crate::{QvOpenApiError, RawQueryRequest};
+use crate::{error::*, models::*};
 use qvopenapi_bindings::{Tc8201InBlock, Tc8201OutBlock, Tc8201OutBlock1};
 
 pub const TR_CODE_C8201: &str = "c8201";
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct C8201Request {
-	pub tr_index: i32,
 	pub account_index: i32,
 	pub balance_type: char
 }
 
 impl C8201Request {
-	pub fn new(tr_index: i32, account_index: i32, balance_type: char) -> C8201Request {
+	pub fn new(account_index: i32, balance_type: char) -> C8201Request {
 		C8201Request {
-			tr_index,
 			account_index,
 			balance_type
 		}
 	}
 
 	pub fn into_raw(&self) -> Arc<RawQueryRequest<Tc8201InBlock>> {
-		Arc::new(RawQueryRequest {
-			tr_index: self.tr_index,
-			tr_code: TR_CODE_C8201,
-			account_index: self.account_index,
-			raw_input: Box::new(Tc8201InBlock {
+		Arc::new(RawQueryRequest::new(TR_CODE_C8201, self.account_index, Box::new(Tc8201InBlock {
 				pswd_noz44: [' ' as c_char; 44],
 				_pswd_noz44: ' ' as c_char,
 				bnc_bse_cdz1: [self.balance_type as c_char],
 				_bnc_bse_cdz1: ' ' as c_char,
 			})
-		})
+		))
 	}
 }
 
@@ -172,6 +165,3 @@ struct C8201Response1 {
 
 pub const BLOCK_NAME_C8201_OUT: &str = "c8201OutBlock";
 pub const BLOCK_NAME_C8201_OUT1_ARRAY: &str = "c8201OutBlock1";
-lazy_static! {
-	pub static ref BLOCKS_C8201: HashSet<&'static str> = HashSet::from([BLOCK_NAME_C8201_OUT, BLOCK_NAME_C8201_OUT1_ARRAY]);
-}

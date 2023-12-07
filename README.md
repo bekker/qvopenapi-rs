@@ -26,8 +26,8 @@
 # Setup rust cross-compilation
 rustup target add i686-pc-windows-gnu
 
-# Install mingw
-brew install mingw-w64
+# Install build tools
+brew install mingw-w64 llvm
 
 # Install wine crossover
 brew tap gcenx/wine
@@ -47,6 +47,8 @@ wine target/i686-pc-windows-gnu/release/qvopenapi-http.exe
 ```
 
 #### Windows
+- LLVM 설치 필요 [링크](https://github.com/llvm/llvm-project/releases/tag/llvmorg-17.0.1)
+
 ```sh
 # Setup rust cross-compilation
 rustup target add i686-pc-windows-msvc

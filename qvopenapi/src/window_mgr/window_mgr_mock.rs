@@ -1,6 +1,6 @@
 use std::sync::{Arc, RwLock};
 
-use crate::*;
+use crate::{*, error::*};
 
 pub fn run_window_async(
     _manager_lock: Arc<RwLock<WindowHelper>>,

@@ -6,7 +6,7 @@ use serde::Serialize;
 use std::ffi::c_char;
 use serde_json::Value;
 
-use crate::{QvOpenApiError, utils::from_cp949_ptr, wmca_lib, client::QvOpenApiRequest};
+use crate::{error::*, utils::from_cp949_ptr, wmca_lib, client::QvOpenApiRequest};
 
 pub fn parse_data(lparam: isize) -> std::result::Result<DataResponse, QvOpenApiError> {
     let data_block = lparam as *const OutDataBlock<c_char>;
@@ -55,7 +55,6 @@ fn parse_block(block_name: &str, block_data: *const c_char, block_len: i32) -> R
 }
 
 pub struct RawQueryRequest<T: ?Sized> {
-    pub tr_index: i32,
     pub tr_code: &'static str,
     pub account_index: i32,
     pub raw_input: Box<T>,
@@ -66,10 +65,10 @@ impl<T: Send + Sync> QvOpenApiRequest for RawQueryRequest<T> {
         wmca_lib::assert_connected()
     }
 
-    fn call_lib(&self, hwnd: isize) -> Result<(), QvOpenApiError> {
+    fn call_lib(&self, tr_index: i32, hwnd: isize) -> Result<(), QvOpenApiError> {
         wmca_lib::query(
             hwnd,
-            self.tr_index,
+            tr_index,
             self.tr_code,
             self.raw_input.as_ref(),
             self.account_index,
@@ -79,9 +78,11 @@ impl<T: Send + Sync> QvOpenApiRequest for RawQueryRequest<T> {
     fn get_tr_code(&self) -> &str {
         self.tr_code
     }
+}
 
-    fn get_tr_index(&self) -> i32 {
-        self.tr_index
+impl <T> RawQueryRequest<T> {
+    pub fn new(tr_code: &'static str, account_index: i32, raw_input: Box<T>) -> RawQueryRequest<T> {
+        RawQueryRequest { tr_code, account_index, raw_input }
     }
 }
 

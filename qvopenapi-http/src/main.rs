@@ -1,37 +1,27 @@
 use std::sync::Arc;
 
-use callback::setup_callbacks;
 use ::log::*;
 use warp::*;
 
-extern crate qvopenapi;
+extern crate qvopenapi_future;
 extern crate serde;
-mod callback;
 mod error;
 mod routes;
 mod response;
-use qvopenapi::{QvOpenApiError, QvOpenApiClient, WindowHelper};
+use qvopenapi_future::{error::*, QvOpenApiFutureClient};
 
-async fn do_run() -> Result<(), qvopenapi::QvOpenApiError> {
-    let (hwnd, client) = set_up_client()?;
+async fn do_run() -> Result<(), QvOpenApiError> {
+    let client = set_up_client()?;
 
-    serve(routes::filter(hwnd, client))
+    serve(routes::filter(client))
         .run(([0, 0, 0, 0], 18000)).await;
 
     Ok(())
 }
 
-fn set_up_client() -> Result<(isize, Arc<QvOpenApiClient>), QvOpenApiError> {
-    // Initialize DLL
-    qvopenapi::init()?;
-
-    // Create a window
-    let mut client = QvOpenApiClient::new();
-    let mut window_helper = WindowHelper::new();
-    let hwnd = window_helper.run(&client)?;
-    setup_callbacks(&mut client);
-
-    Ok((hwnd, Arc::new(client)))
+fn set_up_client() -> Result<Arc<QvOpenApiFutureClient>, QvOpenApiError> {
+    let client = QvOpenApiFutureClient::new()?;
+    Ok(Arc::new(client))
 }
 
 fn main() {

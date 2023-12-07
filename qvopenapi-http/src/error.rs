@@ -4,7 +4,7 @@ use warp::{
     http::StatusCode,
     *,
 };
-use qvopenapi::QvOpenApiError;
+use qvopenapi_future::error::*;
 
 use crate::response::HttpMessageResponse;
 

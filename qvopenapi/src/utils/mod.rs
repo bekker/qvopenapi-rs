@@ -3,7 +3,7 @@ use std::ffi::{c_char, CStr};
 use chrono::FixedOffset;
 use encoding::{all::WINDOWS_949, DecoderTrap, Encoding};
 
-use crate::QvOpenApiError;
+use crate::error::*;
 
 lazy_static! {
     pub static ref SEOUL_TZ: FixedOffset = FixedOffset::east_opt(9 * 3600).unwrap();

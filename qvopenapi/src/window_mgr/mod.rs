@@ -4,7 +4,7 @@ use std::{
     thread::JoinHandle,
 };
 
-use crate::*;
+use crate::{*, error::*};
 
 pub mod message_const;
 
@@ -48,7 +48,7 @@ impl WindowHelper {
     }
 
     pub fn run(
-        &mut self,
+        &self,
         client: &dyn AbstractQvOpenApiClient,
     ) -> std::result::Result<isize, QvOpenApiError> {
         let ret = Arc::new(RwLock::new(WindowHelper {

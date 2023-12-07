@@ -1014,12 +1014,26 @@ dependencies = [
 ]
 
 [[package]]
+name = "qvopenapi-future"
+version = "0.1.0"
+dependencies = [
+ "env_logger 0.10.0",
+ "lazy_static",
+ "log",
+ "qvopenapi",
+ "rpassword",
+ "serde",
+ "serde_json",
+ "tokio",
+]
+
+[[package]]
 name = "qvopenapi-http"
 version = "0.1.0"
 dependencies = [
  "env_logger 0.10.0",
  "log",
- "qvopenapi",
+ "qvopenapi-future",
  "serde",
  "serde_json",
  "tokio",
