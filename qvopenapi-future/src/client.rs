@@ -75,8 +75,16 @@ impl QvOpenApiFutureClient {
         cert_password: &str,
     ) -> Result<Arc<TrContext>, QvOpenApiError> {
         let context = self.set_context(TR_INDEX_CONNECT, TrType::CONNECT)?;
-        self.delegate.connect(new_hwnd, account_type, id, password, cert_password)?;
-        Ok(context)
+        match self.delegate.connect(new_hwnd, account_type, id, password, cert_password) {
+            Ok(_) => {
+                Ok(context)
+            },
+            Err(err) => {
+                let mut context_map = self.tr_context_map.write().unwrap();
+                context_map.remove(&TR_INDEX_CONNECT);
+                Err(err)
+            }
+        }
     }
 
     pub fn query(
@@ -92,8 +100,16 @@ impl QvOpenApiFutureClient {
     ) -> Result<Arc<TrContext>, QvOpenApiError> {
         let tr_index = self.get_next_tr_index();
         let context = self.set_context(tr_index, TrType::QUERY)?;
-        self.delegate.query(tr_index, req)?;
-        Ok(context)
+        match self.delegate.query(tr_index, req) {
+            Ok(_) => {
+                Ok(context)
+            },
+            Err(err) => {
+                let mut context_map = self.tr_context_map.write().unwrap();
+                context_map.remove(&tr_index);
+                Err(err)
+            }
+        }
     }
 
     fn setup_callbacks(&self, delagate: Arc<dyn AbstractQvOpenApiClient + Send + Sync>) {
@@ -127,10 +143,11 @@ impl QvOpenApiFutureClient {
             delagate.on_disconnect(Box::new(move || {
                 let mut is_connecting_locked = is_connecting_lock.write().unwrap();
                 // make all requests end when disconnect
-                let context_map = context_map_lock.write().unwrap();
+                let mut context_map = context_map_lock.write().unwrap();
                 for context in context_map.values() {
                     context.on_disconnect();
                 }
+                context_map.clear();
                 *is_connecting_locked = false;
             }));
         }

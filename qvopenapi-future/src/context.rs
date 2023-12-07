@@ -62,11 +62,7 @@ impl TrContext {
 
     pub fn on_disconnect(&self) -> bool {
         let mut status = self.status.lock().unwrap();
-        status.messages.push(MessageResponse {
-            tr_index: -1,
-            msg_code: "-----".into(),
-            msg: "Disconnected".into(),
-        });
+        status.error = Some(QvOpenApiError::NotConnectedError);
         status.set_done();
         return true;
     }
@@ -90,11 +86,12 @@ pub struct TrContextStatus {
     waker: Option<Waker>,
     result: HashMap<String, Value>,
     messages: Vec<MessageResponse>,
+    error: Option<QvOpenApiError>,
 }
 
 impl TrContextStatus {
     fn new() -> TrContextStatus {
-        TrContextStatus { output: Value::Null, is_done: false, waker: None, result: HashMap::new(), messages: Vec::new() }
+        TrContextStatus { output: Value::Null, is_done: false, waker: None, result: HashMap::new(), messages: Vec::new(), error: None }
     }
 
     fn set_done(&mut self) {
@@ -102,6 +99,7 @@ impl TrContextStatus {
         self.output = json!({
             "result": self.result,
             "messages": self.messages,
+            "error": self.error,
         });
         match &self.waker {
             Some(waker) => {

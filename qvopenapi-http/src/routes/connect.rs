@@ -24,8 +24,18 @@ async fn connect(client: Arc<QvOpenApiFutureClient>, request: ConnectRequest) ->
         return error::convert_error(ret.err().unwrap());
     }
 
+    let result = ret.unwrap();
+
+    let error = result.get("error");
+    if error.is_some() && !error.unwrap().is_null() {
+        return Ok(reply::with_status(
+            reply::json(&result),
+            StatusCode::INTERNAL_SERVER_ERROR,
+        ))
+    }
+
     Ok(reply::with_status(
-        reply::json(&ret.unwrap()),
+        reply::json(&result),
         StatusCode::OK,
     ))
 }

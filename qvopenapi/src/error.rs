@@ -2,8 +2,9 @@ extern crate custom_error;
 extern crate libloading;
 
 use custom_error::custom_error;
+use serde::Serialize;
 
-custom_error! {#[derive(Clone)] pub QvOpenApiError
+custom_error! {#[derive(Clone, Serialize)] pub QvOpenApiError
     BadRequestError{ message: String } = "Bad request: {message}",
     WmcaDllLoadingError = "Failed to load wmca.dll",
     WindowCreationError = "Failed to create a window",

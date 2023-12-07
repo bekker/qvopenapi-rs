@@ -148,33 +148,37 @@ impl QvOpenApiClient {
 impl QvOpenApiClientMessageHandler {
     pub fn on_wmca_msg(&self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
         debug!("on_wmca_msg {} {}", wparam, lparam);
-        let mut handler = self.message_handler.lock().unwrap();
         match u32::try_from(wparam).unwrap() {
             CA_CONNECTED => {
                 let res = models::parse_connect(lparam)?;
                 debug!("CA_CONNECT {}", to_string_pretty(&res)?);
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_connect)(&res);
                 Ok(())
             }
             CA_DISCONNECTED => {
                 debug!("CA_DISCONNECTED");
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_disconnect)();
                 Ok(())
             }
             CA_SOCKETERROR => {
                 debug!("CA_SOCKETERROR");
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_socket_error)();
                 Ok(())
             }
             CA_RECEIVEDATA => {
                 let res = models::parse_data(lparam)?;
                 debug!("CA_RECEIVEDATA [TR{}] {}", res.tr_index, to_string_pretty(&res)?);
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_data)(&res);
                 Ok(())
             }
             CA_RECEIVESISE => {
                 let res = models::parse_sise(lparam)?;
                 debug!("CA_RECEIVESISE [TR{}] {}", res.tr_index, to_string_pretty(&res)?);
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_sise)(&res);
                 Ok(())
             }
@@ -183,18 +187,21 @@ impl QvOpenApiClientMessageHandler {
                 debug!("CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
                     res.tr_index, res.msg_code, res.msg
                 );
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_message)(&res);
                 Ok(())
             }
             CA_RECEIVECOMPLETE => {
                 let res = models::parse_complete(lparam)?;
                 debug!("CA_RECEIVECOMPLETE [TR{}]", res);
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_complete)(res);
                 Ok(())
             }
             CA_RECEIVEERROR => {
                 let res = models::parse_error(lparam)?;
                 debug!("CA_RECEIVEERROR [TR{}] \"{}\"", res.tr_index, res.error_msg);
+                let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_error)(&res);
                 Ok(())
             }
