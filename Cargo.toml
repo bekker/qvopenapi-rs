@@ -3,7 +3,7 @@
 members = [
     "qvopenapi",
     "qvopenapi-bindings",
-    "qvopenapi-future",
+    "qvopenapi-async",
     "qvopenapi-http",
     "qvopenapi-sys",
 ]

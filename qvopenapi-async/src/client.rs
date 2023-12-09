@@ -10,7 +10,7 @@ const INITIAL_TR_INDEX: i32 = 3;
 const MAX_TR_INDEX: i32 = 255;
 const DEFAULT_TIMEOUT: Duration = Duration::from_secs(10);
 
-pub struct QvOpenApiFutureClient {
+pub struct QvOpenApiAsyncClient {
     delegate: Arc<dyn AbstractQvOpenApiClient + Send + Sync>,
     tr_context_map: Arc<RwLock<TrContextMap>>,
     next_tr_index: Mutex<i32>,
@@ -20,8 +20,8 @@ pub struct QvOpenApiFutureClient {
     hwnd: isize,
 }
 
-impl QvOpenApiFutureClient {
-    pub fn new() -> Result<QvOpenApiFutureClient, QvOpenApiError> {
+impl QvOpenApiAsyncClient {
+    pub fn new() -> Result<QvOpenApiAsyncClient, QvOpenApiError> {
         // Create a window
         let client = Arc::new(QvOpenApiClient::new()?);
         let window_helper = WindowHelper::new();
@@ -31,8 +31,8 @@ impl QvOpenApiFutureClient {
         Ok(Self::new_custom(client.clone(), hwnd))
     }
 
-    pub fn new_custom(delgate: Arc<dyn AbstractQvOpenApiClient + Send + Sync>, hwnd: isize) -> QvOpenApiFutureClient {
-        let client = QvOpenApiFutureClient {
+    pub fn new_custom(delgate: Arc<dyn AbstractQvOpenApiClient + Send + Sync>, hwnd: isize) -> QvOpenApiAsyncClient {
+        let client = QvOpenApiAsyncClient {
             delegate: delgate.clone(),
             tr_context_map: Arc::new(RwLock::new(HashMap::new())),
             next_tr_index: Mutex::new(INITIAL_TR_INDEX),
@@ -301,7 +301,7 @@ impl QvOpenApiFutureClient {
     }
 }
 
-impl Drop for QvOpenApiFutureClient {
+impl Drop for QvOpenApiAsyncClient {
     fn drop(&mut self) {
         {
             let mut is_dropping = self.is_dropping.lock().unwrap();

@@ -1007,14 +1007,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "qvopenapi-bindings"
-version = "0.1.0"
-dependencies = [
- "bindgen",
-]
-
-[[package]]
-name = "qvopenapi-future"
+name = "qvopenapi-async"
 version = "0.1.0"
 dependencies = [
  "env_logger 0.10.0",
@@ -1028,12 +1021,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "qvopenapi-bindings"
+version = "0.1.0"
+dependencies = [
+ "bindgen",
+]
+
+[[package]]
 name = "qvopenapi-http"
 version = "0.1.0"
 dependencies = [
  "env_logger 0.10.0",
  "log",
- "qvopenapi-future",
+ "qvopenapi-async",
  "serde",
  "serde_json",
  "tokio",

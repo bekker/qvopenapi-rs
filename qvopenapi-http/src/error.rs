@@ -4,7 +4,7 @@ use warp::{
     http::StatusCode,
     *,
 };
-use qvopenapi_future::error::*;
+use qvopenapi_async::error::*;
 
 use crate::response::HttpMessageResponse;
 

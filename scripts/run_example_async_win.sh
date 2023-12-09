@@ -11,4 +11,4 @@ then
     $SCRIPT_DIR/download_dll.sh
 fi
 
-cargo run -p qvopenapi-future --example connect_future --release --target i686-pc-windows-msvc
+cargo run -p qvopenapi-async --example connect_async --release --target i686-pc-windows-msvc

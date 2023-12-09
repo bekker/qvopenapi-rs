@@ -3,12 +3,12 @@ use std::sync::Arc;
 use ::log::*;
 use warp::*;
 
-extern crate qvopenapi_future;
+extern crate qvopenapi_async;
 extern crate serde;
 mod error;
 mod routes;
 mod response;
-use qvopenapi_future::{error::*, QvOpenApiFutureClient};
+use qvopenapi_async::{error::*, QvOpenApiAsyncClient};
 
 async fn do_run() -> Result<(), QvOpenApiError> {
     let client = set_up_client()?;
@@ -19,8 +19,8 @@ async fn do_run() -> Result<(), QvOpenApiError> {
     Ok(())
 }
 
-fn set_up_client() -> Result<Arc<QvOpenApiFutureClient>, QvOpenApiError> {
-    let client = QvOpenApiFutureClient::new()?;
+fn set_up_client() -> Result<Arc<QvOpenApiAsyncClient>, QvOpenApiError> {
+    let client = QvOpenApiAsyncClient::new()?;
     Ok(Arc::new(client))
 }
 

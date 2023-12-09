@@ -1,7 +1,7 @@
 use std::io::Write;
 
 use ::log::*;
-use qvopenapi_future::{*, models::*, error::*};
+use qvopenapi_async::{*, models::*, error::*};
 use rpassword::read_password;
 
 fn main() {
@@ -35,7 +35,7 @@ async fn do_run() -> Result<(), QvOpenApiError> {
     let cert_password = find_env_or_get_input("QV_CERTPW")?;
 
     // Create future client
-    let future_client = QvOpenApiFutureClient::new()?;
+    let future_client = QvOpenApiAsyncClient::new()?;
 
     // Connect and query C8201 (계좌 잔고)
     let connect_response = future_client.connect(

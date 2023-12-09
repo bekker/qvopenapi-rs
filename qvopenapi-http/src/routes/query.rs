@@ -1,11 +1,11 @@
 use std::{convert::Infallible, sync::Arc};
 
-use qvopenapi_future::{models::*, QvOpenApiFutureClient};
+use qvopenapi_async::{models::*, QvOpenApiAsyncClient};
 use warp::{filters::{method::post, body, BoxedFilter}, Filter, reply::{Reply, self}, http::StatusCode};
 
 use crate::error;
 
-pub fn filter_c8201(client: Arc<QvOpenApiFutureClient>) -> BoxedFilter<(impl Reply,)> {
+pub fn filter_c8201(client: Arc<QvOpenApiAsyncClient>) -> BoxedFilter<(impl Reply,)> {
     let cloned = client.clone();
     let handler = move |req: C8201Request| query_c8201(cloned.clone(), req);
     post()
@@ -15,7 +15,7 @@ pub fn filter_c8201(client: Arc<QvOpenApiFutureClient>) -> BoxedFilter<(impl Rep
         .boxed()
 }
 
-async fn query_c8201(client: Arc<QvOpenApiFutureClient>, request: C8201Request) -> Result<impl Reply, Infallible> {
+async fn query_c8201(client: Arc<QvOpenApiAsyncClient>, request: C8201Request) -> Result<impl Reply, Infallible> {
     let ret = client.query( request.into_raw()).await;
 
     if ret.is_err() {
