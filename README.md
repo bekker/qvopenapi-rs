@@ -18,6 +18,12 @@
   - `Dockerfile` 및 `docker/entrypoint.sh` 참고
 
 ## Example
+```
+[dependencies]
+# Windows를 제외한 환경에서는 disable-unwind feature가 필요
+qvopenapi-async = { version = "0.1.0", features = ["disable-unwind"] }
+```
+
 ```rust
 // client 객체 생성
 let future_client = QvOpenApiAsyncClient::new()?;

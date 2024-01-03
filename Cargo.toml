@@ -31,3 +31,7 @@ serde_json = "1.0.96"
 strum = "0.24.1"
 strum_macros = "0.24.1"
 tokio = { version = "1.28.0", features = ["full"] }
+qvopenapi-sys = "0.1.0"
+qvopenapi-bindings = "0.1.0"
+qvopenapi = "0.1.0"
+qvopenapi-async = "0.1.0"

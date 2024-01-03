@@ -2,6 +2,8 @@
 name = "qvopenapi-bindings"
 version = "0.1.0"
 edition = "2021"
+description = "wmca.dll을 libloading을 사용해서 DLL의 함수들을 호출할 수 있도록 작성"
+license-file = "LICENSE.txt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 

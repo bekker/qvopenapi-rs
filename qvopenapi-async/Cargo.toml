@@ -2,13 +2,15 @@
 name = "qvopenapi-async"
 version = "0.1.0"
 edition = "2021"
+description = "qvopenapi의 경우 콜백 기반으로 통신하기 때문에 TR ID 등을 관리하기가 어렵고 번거로움. Rust의 future 형태로 손쉽게 사용할 수 있도록 wrapping한 라이브러리"
+license-file = "LICENSE.txt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 log = { workspace = true }
 lazy_static = { workspace = true }
-qvopenapi = { path = "../qvopenapi" }
+qvopenapi = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
 

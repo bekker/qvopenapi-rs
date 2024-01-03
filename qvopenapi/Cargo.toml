@@ -2,12 +2,14 @@
 name = "qvopenapi"
 version = "0.1.0"
 edition = "2021"
+description = "wmca.dll은 윈도우 이벤트 기반으로 동작하므로 윈도우 및 기반 이벤트들을 자동으로 관리하고 주요 Tx 들을 별도 메소드로 제공"
+license-file = "LICENSE.txt"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-qvopenapi-bindings = { path = "../qvopenapi-bindings" }
-qvopenapi-sys = { path = "../qvopenapi-sys" }
+qvopenapi-bindings = { workspace = true }
+qvopenapi-sys = { workspace = true }
 custom_error = { workspace = true }
 libloading = { workspace = true }
 lazy_static = { workspace = true }
