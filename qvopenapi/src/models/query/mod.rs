@@ -3,10 +3,10 @@ pub use c8201::*;
 use qvopenapi_bindings::OutDataBlock;
 use serde::Serialize;
 
-use std::ffi::c_char;
 use serde_json::Value;
+use std::ffi::c_char;
 
-use crate::{error::*, utils::from_cp949_ptr, wmca_lib, client::QvOpenApiRequest};
+use crate::{client::QvOpenApiRequest, error::*, utils::from_cp949_ptr, wmca_lib};
 
 pub fn parse_data(lparam: isize) -> std::result::Result<DataResponse, QvOpenApiError> {
     let data_block = lparam as *const OutDataBlock<c_char>;
@@ -44,13 +44,17 @@ pub fn parse_sise(lparam: isize) -> std::result::Result<DataResponse, QvOpenApiE
     }
 }
 
-fn parse_block(block_name: &str, block_data: *const c_char, block_len: i32) -> Result<Value, QvOpenApiError> {
+fn parse_block(
+    block_name: &str,
+    block_data: *const c_char,
+    block_len: i32,
+) -> Result<Value, QvOpenApiError> {
     match block_name {
         BLOCK_NAME_C8201_OUT => parse_c8201_response(block_data, block_len),
         BLOCK_NAME_C8201_OUT1_ARRAY => parse_c8201_response1_array(block_data, block_len),
-        _ => {
-            Err(QvOpenApiError::UnimplementedBlockError { block_name: block_name.into() })
-        }
+        _ => Err(QvOpenApiError::UnimplementedBlockError {
+            block_name: block_name.into(),
+        }),
     }
 }
 
@@ -80,9 +84,13 @@ impl<T: Send + Sync> QvOpenApiRequest for RawQueryRequest<T> {
     }
 }
 
-impl <T> RawQueryRequest<T> {
+impl<T> RawQueryRequest<T> {
     pub fn new(tr_code: &'static str, account_index: i32, raw_input: Box<T>) -> RawQueryRequest<T> {
-        RawQueryRequest { tr_code, account_index, raw_input }
+        RawQueryRequest {
+            tr_code,
+            account_index,
+            raw_input,
+        }
     }
 }
 
@@ -94,8 +102,7 @@ pub struct DataResponse {
     pub block_data: Value,
 }
 
-pub struct DisconnectRequest {
-}
+pub struct DisconnectRequest {}
 
 impl QvOpenApiRequest for DisconnectRequest {
     fn before_post(&self) -> Result<(), QvOpenApiError> {

@@ -1,10 +1,7 @@
 use std::convert::Infallible;
 
-use warp::{
-    http::StatusCode,
-    *,
-};
 use qvopenapi_async::error::*;
+use warp::{http::StatusCode, *};
 
 use crate::response::HttpMessageResponse;
 

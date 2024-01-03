@@ -1,7 +1,12 @@
 use std::{convert::Infallible, sync::Arc};
 
 use qvopenapi_async::QvOpenApiAsyncClient;
-use warp::{filters::{method::post, BoxedFilter}, Filter, reply::{Reply, self}, http::StatusCode};
+use warp::{
+    filters::{method::post, BoxedFilter},
+    http::StatusCode,
+    reply::{self, Reply},
+    Filter,
+};
 
 use crate::{error, response::HttpMessageResponse};
 
@@ -22,7 +27,7 @@ async fn disconnect(client: Arc<QvOpenApiAsyncClient>) -> Result<impl Reply, Inf
 
     Ok(reply::with_status(
         reply::json(&HttpMessageResponse {
-            message: "OK".into()
+            message: "OK".into(),
         }),
         StatusCode::OK,
     ))

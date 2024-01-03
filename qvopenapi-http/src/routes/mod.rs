@@ -4,9 +4,9 @@ use qvopenapi_async::QvOpenApiAsyncClient;
 use warp::{filters::BoxedFilter, reply::Reply, Filter};
 
 pub mod connect;
-pub mod query;
 pub mod connect_info;
 pub mod disconnect;
+pub mod query;
 
 pub fn filter(client: Arc<QvOpenApiAsyncClient>) -> BoxedFilter<(impl Reply,)> {
     connect::filter_connect(client.clone())

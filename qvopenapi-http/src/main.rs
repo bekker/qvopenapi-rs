@@ -6,15 +6,16 @@ use warp::*;
 extern crate qvopenapi_async;
 extern crate serde;
 mod error;
-mod routes;
 mod response;
+mod routes;
 use qvopenapi_async::{error::*, QvOpenApiAsyncClient};
 
 async fn do_run() -> Result<(), QvOpenApiError> {
     let client = set_up_client()?;
 
     serve(routes::filter(client.clone()))
-        .run(([0, 0, 0, 0], 18000)).await;
+        .run(([0, 0, 0, 0], 18000))
+        .await;
 
     Ok(())
 }
@@ -33,17 +34,18 @@ fn main() {
     tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
-        .map_or_else(|e| {
-            error!("Tokio runtime init error: {}", e.to_string())
-        }, |rt| {
-            debug!("Tokio runtime init complete");
-            rt.block_on(async move {
-                match do_run().await {
-                    Ok(_) => {}
-                    Err(e) => {
-                        error!("Error occured: {}", e);
+        .map_or_else(
+            |e| error!("Tokio runtime init error: {}", e.to_string()),
+            |rt| {
+                debug!("Tokio runtime init complete");
+                rt.block_on(async move {
+                    match do_run().await {
+                        Ok(_) => {}
+                        Err(e) => {
+                            error!("Error occured: {}", e);
+                        }
                     }
-                }
-            });
-        });
+                });
+            },
+        );
 }

@@ -16,15 +16,17 @@ pub fn parse_ratio_str(src: &[c_char]) -> Result<Option<f64>, QvOpenApiError> {
     let input = parse_string(src)?;
 
     if input.is_empty() {
-        return Ok(None)
+        return Ok(None);
     }
 
     if input.ends_with('%') {
         let substr: &str = &input[..input.len() - 1];
-        let parsed: f64 = substr.parse().map_err(|_| QvOpenApiError::ParseRatioError{input})?;
+        let parsed: f64 = substr
+            .parse()
+            .map_err(|_| QvOpenApiError::ParseRatioError { input })?;
         Ok(Some(parsed))
     } else {
-        Err(QvOpenApiError::ParseRatioError{input})
+        Err(QvOpenApiError::ParseRatioError { input })
     }
 }
 
@@ -44,7 +46,7 @@ pub fn parse_number(src: &[c_char]) -> Result<Option<i64>, QvOpenApiError> {
     let input = parse_string(src)?;
 
     if input.is_empty() {
-        return Ok(None)
+        return Ok(None);
     }
 
     let mut filtered = String::new();
@@ -55,7 +57,7 @@ pub fn parse_number(src: &[c_char]) -> Result<Option<i64>, QvOpenApiError> {
                 is_minus = true;
                 continue;
             } else {
-                return Err(QvOpenApiError::ParseNumberError{input})
+                return Err(QvOpenApiError::ParseNumberError { input });
             }
         }
 
@@ -64,25 +66,20 @@ pub fn parse_number(src: &[c_char]) -> Result<Option<i64>, QvOpenApiError> {
         }
 
         if !ch.is_numeric() {
-            return Err(QvOpenApiError::ParseNumberError{input})
+            return Err(QvOpenApiError::ParseNumberError { input });
         }
 
         filtered.push(ch);
     }
 
     if filtered.is_empty() {
-        return Ok(Some(0))
+        return Ok(Some(0));
     }
 
-    let parsed: Result<i64, QvOpenApiError> = filtered.parse()
-        .map_err(|_| QvOpenApiError::ParseNumberError{input})
-        .map(|num: i64| {
-            if is_minus {
-                -num
-            } else {
-                num
-            }
-        });
+    let parsed: Result<i64, QvOpenApiError> = filtered
+        .parse()
+        .map_err(|_| QvOpenApiError::ParseNumberError { input })
+        .map(|num: i64| if is_minus { -num } else { num });
 
     Ok(Some(parsed?))
 }

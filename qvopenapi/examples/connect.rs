@@ -1,7 +1,7 @@
-use std::{time::Duration, io::Write};
+use std::{io::Write, time::Duration};
 
 use ::log::*;
-use qvopenapi::{QvOpenApiClient, error::*, WindowHelper, AbstractQvOpenApiClient, models::*};
+use qvopenapi::{error::*, models::*, AbstractQvOpenApiClient, QvOpenApiClient, WindowHelper};
 use rpassword::read_password;
 
 fn main() {
@@ -33,7 +33,11 @@ fn do_run() -> Result<(), QvOpenApiError> {
         info!("Connected: account count {}", res.account_count);
     }));
     client.on_data(Box::new(|res| {
-        info!("tr_index: {}, block_name: {}", res.tr_index, res.block_name.as_str());
+        info!(
+            "tr_index: {}, block_name: {}",
+            res.tr_index,
+            res.block_name.as_str()
+        );
         if res.tr_index == BALANCE_TR_INDEX {
             match res.block_name.as_str() {
                 BLOCK_NAME_C8201_OUT => {
@@ -42,7 +46,10 @@ fn do_run() -> Result<(), QvOpenApiError> {
                 }
                 BLOCK_NAME_C8201_OUT1_ARRAY => {
                     for data in res.block_data.as_array().unwrap().iter() {
-                        info!("종목번호: {}, 종목명: {}, 보유수: {}", data["issue_codez6"], data["issue_namez40"], data["bal_qtyz16"])
+                        info!(
+                            "종목번호: {}, 종목명: {}, 보유수: {}",
+                            data["issue_codez6"], data["issue_namez40"], data["bal_qtyz16"]
+                        )
                     }
                 }
                 _ => {
@@ -62,7 +69,7 @@ fn do_run() -> Result<(), QvOpenApiError> {
     )?;
     std::thread::sleep(Duration::from_millis(3000));
 
-    client.query(BALANCE_TR_INDEX, C8201Request::new( 1, '1').into_raw())?;
+    client.query(BALANCE_TR_INDEX, C8201Request::new(1, '1').into_raw())?;
     std::thread::sleep(Duration::from_millis(3000));
     Ok(())
 }
@@ -82,12 +89,12 @@ fn find_env_or_get_input(key: &str) -> Result<String, QvOpenApiError> {
         if input_result.is_err() {
             return Err(QvOpenApiError::BadRequestError {
                 message: format!("env {} not found", key),
-            })
+            });
         }
 
         let trimmed = String::from(input_result.unwrap().trim());
         if trimmed.len() > 0 {
-            return Ok(trimmed)
+            return Ok(trimmed);
         }
 
         println!("");

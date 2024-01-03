@@ -9,7 +9,7 @@ use windows::{
     Win32::System::LibraryLoader::GetModuleHandleA, Win32::UI::WindowsAndMessaging::*,
 };
 
-use crate::{*, error::*};
+use crate::{error::*, *};
 
 use super::message_const::*;
 

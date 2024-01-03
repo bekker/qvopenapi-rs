@@ -3,7 +3,7 @@
     non_camel_case_types,
     non_snake_case,
     dead_code,
-    deref_nullptr,
+    deref_nullptr
 )]
 mod bindings;
 

@@ -4,7 +4,7 @@ use std::{
     thread::JoinHandle,
 };
 
-use crate::{*, error::*};
+use crate::{error::*, *};
 
 pub mod message_const;
 

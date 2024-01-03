@@ -1,6 +1,6 @@
-mod query;
 mod connect;
 mod message;
-pub use query::*;
+mod query;
 pub use connect::*;
 pub use message::*;
+pub use query::*;

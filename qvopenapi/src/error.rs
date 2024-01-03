@@ -47,6 +47,8 @@ impl From<chrono::ParseError> for QvOpenApiError {
 
 impl From<serde_json::Error> for QvOpenApiError {
     fn from(cause: serde_json::Error) -> Self {
-        QvOpenApiError::JsonParseError{ message: cause.to_string() }
+        QvOpenApiError::JsonParseError {
+            message: cause.to_string(),
+        }
     }
 }

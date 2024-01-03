@@ -1,8 +1,15 @@
-use std::{collections::HashMap, sync::{Arc, Mutex, RwLock}, time::{Duration, Instant}, thread::sleep};
+use std::{
+    collections::HashMap,
+    sync::{Arc, Mutex, RwLock},
+    thread::sleep,
+    time::{Duration, Instant},
+};
 
 use crate::context::*;
 use log::*;
-use qvopenapi::{AbstractQvOpenApiClient, error::*, models::*, QvOpenApiRequest, WindowHelper, QvOpenApiClient};
+use qvopenapi::{
+    error::*, models::*, AbstractQvOpenApiClient, QvOpenApiClient, QvOpenApiRequest, WindowHelper,
+};
 use serde_json::{json, Value};
 
 type TrContextMap = HashMap<i32, Arc<TrContext>>;
@@ -31,7 +38,10 @@ impl QvOpenApiAsyncClient {
         Ok(Self::new_custom(client.clone(), hwnd))
     }
 
-    pub fn new_custom(delgate: Arc<dyn AbstractQvOpenApiClient + Send + Sync>, hwnd: isize) -> QvOpenApiAsyncClient {
+    pub fn new_custom(
+        delgate: Arc<dyn AbstractQvOpenApiClient + Send + Sync>,
+        hwnd: isize,
+    ) -> QvOpenApiAsyncClient {
         let client = QvOpenApiAsyncClient {
             delegate: delgate.clone(),
             tr_context_map: Arc::new(RwLock::new(HashMap::new())),
@@ -47,25 +57,29 @@ impl QvOpenApiAsyncClient {
         let cloned_context_map = client.tr_context_map.clone();
         let cloned_is_dropping = client.is_dropping.clone();
         {
-            std::thread::spawn(move || {
-                loop {
-                    let is_dropping = *cloned_is_dropping.clone().lock().unwrap();
-                    if is_dropping {
-                        break;
-                    }
-                    Self::check_expired(cloned_context_map.clone());
-                    sleep(Duration::from_millis(100));
+            std::thread::spawn(move || loop {
+                let is_dropping = *cloned_is_dropping.clone().lock().unwrap();
+                if is_dropping {
+                    break;
                 }
+                Self::check_expired(cloned_context_map.clone());
+                sleep(Duration::from_millis(100));
             });
         }
 
         client
     }
 
-    fn set_context(&self, tr_index: i32, tr_type: TrType) -> Result<Arc<TrContext>, QvOpenApiError> {
+    fn set_context(
+        &self,
+        tr_index: i32,
+        tr_type: TrType,
+    ) -> Result<Arc<TrContext>, QvOpenApiError> {
         let mut map = self.tr_context_map.write().unwrap();
         if map.contains_key(&tr_index) {
-            Err(QvOpenApiError::BadRequestError { message: format!("Already using tr_index {}", tr_index) })
+            Err(QvOpenApiError::BadRequestError {
+                message: format!("Already using tr_index {}", tr_index),
+            })
         } else {
             let context = Arc::new(TrContext::new(tr_index, tr_type.clone()));
             map.insert(tr_index, context.clone());
@@ -98,10 +112,11 @@ impl QvOpenApiAsyncClient {
         cert_password: &str,
     ) -> Result<Arc<TrContext>, QvOpenApiError> {
         let context = self.set_context(TR_INDEX_CONNECT, TrType::CONNECT)?;
-        match self.delegate.connect(new_hwnd, account_type, id, password, cert_password) {
-            Ok(_) => {
-                Ok(context)
-            },
+        match self
+            .delegate
+            .connect(new_hwnd, account_type, id, password, cert_password)
+        {
+            Ok(_) => Ok(context),
             Err(err) => {
                 let mut context_map = self.tr_context_map.write().unwrap();
                 context_map.remove(&TR_INDEX_CONNECT);
@@ -113,32 +128,20 @@ impl QvOpenApiAsyncClient {
     pub fn get_connect_info(&self) -> Result<Value, QvOpenApiError> {
         let connected_info = self.connected_info.read().unwrap();
         match &*connected_info {
-            Some(res) => {
-                Ok(json!(res))
-            },
-            None => {
-                Err(QvOpenApiError::NotConnectedError)
-            }
+            Some(res) => Ok(json!(res)),
+            None => Err(QvOpenApiError::NotConnectedError),
         }
     }
 
-    pub fn query(
-        &self,
-        req: Arc<dyn QvOpenApiRequest>
-    ) -> TrFuture {
+    pub fn query(&self, req: Arc<dyn QvOpenApiRequest>) -> TrFuture {
         TrFuture::new(self.do_query(req))
     }
 
-    fn do_query(
-        &self,
-        req: Arc<dyn QvOpenApiRequest>
-    ) -> Result<Arc<TrContext>, QvOpenApiError> {
+    fn do_query(&self, req: Arc<dyn QvOpenApiRequest>) -> Result<Arc<TrContext>, QvOpenApiError> {
         let tr_index = self.get_next_tr_index();
         let context = self.set_context(tr_index, TrType::QUERY)?;
         match self.delegate.query(tr_index, req) {
-            Ok(_) => {
-                Ok(context)
-            },
+            Ok(_) => Ok(context),
             Err(err) => {
                 let mut context_map = self.tr_context_map.write().unwrap();
                 context_map.remove(&tr_index);
@@ -159,23 +162,35 @@ impl QvOpenApiAsyncClient {
             delagate.on_connect(Box::new(move |res| {
                 let mut connected_info = connected_info_lock.write().unwrap();
                 let mut is_connecting_locked = is_connecting_lock.write().unwrap();
-                Self::handle_callback(context_map_lock.clone(), TR_INDEX_CONNECT, res, |context, res| {
-                    *connected_info = Some(res.clone());
-                    context.on_connect(res)
-                });
+                Self::handle_callback(
+                    context_map_lock.clone(),
+                    TR_INDEX_CONNECT,
+                    res,
+                    |context, res| {
+                        *connected_info = Some(res.clone());
+                        context.on_connect(res)
+                    },
+                );
                 *is_connecting_locked = false;
             }));
         }
         {
             let context_map_lock = self.tr_context_map.clone();
             delagate.on_data(Box::new(move |res| {
-                Self::handle_callback(context_map_lock.clone(), res.tr_index, res, |context, res| { context.on_data(res) });
+                Self::handle_callback(
+                    context_map_lock.clone(),
+                    res.tr_index,
+                    res,
+                    |context, res| context.on_data(res),
+                );
             }));
         }
         {
             let context_map_lock = self.tr_context_map.clone();
             delagate.on_complete(Box::new(move |tr_index| {
-                Self::handle_callback(context_map_lock.clone(), tr_index, (), |context, _res| { context.on_complete() });
+                Self::handle_callback(context_map_lock.clone(), tr_index, (), |context, _res| {
+                    context.on_complete()
+                });
             }));
         }
         {
@@ -225,9 +240,11 @@ impl QvOpenApiAsyncClient {
                 // If connecting, all messages should direct to connect context
                 let tr_index = match *is_connecting_locked {
                     true => TR_INDEX_CONNECT,
-                    false => res.tr_index
+                    false => res.tr_index,
                 };
-                Self::handle_callback(context_map_lock.clone(), tr_index, (), |context, _res| { context.on_message(res.clone()) })
+                Self::handle_callback(context_map_lock.clone(), tr_index, (), |context, _res| {
+                    context.on_message(res.clone())
+                })
             }));
         }
         {
@@ -239,21 +256,30 @@ impl QvOpenApiAsyncClient {
                 // If connecting, all messages should direct to connect context
                 let tr_index = match *is_connecting_locked {
                     true => TR_INDEX_CONNECT,
-                    false => res.tr_index
+                    false => res.tr_index,
                 };
-                Self::handle_callback(context_map_lock.clone(), tr_index, (), |context, _res| { context.on_error_response(res.clone()) })
+                Self::handle_callback(context_map_lock.clone(), tr_index, (), |context, _res| {
+                    context.on_error_response(res.clone())
+                })
             }));
         }
     }
 
-    fn handle_callback<F, R>(context_map_lock: Arc<RwLock<TrContextMap>>, tr_index: i32, res: R, mut callback: F) where F: FnMut(&TrContext, R) -> bool {
+    fn handle_callback<F, R>(
+        context_map_lock: Arc<RwLock<TrContextMap>>,
+        tr_index: i32,
+        res: R,
+        mut callback: F,
+    ) where
+        F: FnMut(&TrContext, R) -> bool,
+    {
         let mut completed = false;
         {
             let context_map = context_map_lock.read().unwrap();
             match context_map.get(&tr_index) {
                 Some(context) => {
                     completed = callback(context, res);
-                },
+                }
                 None => {
                     if tr_index != TR_INDEX_CONNECT {
                         error!("Context for tr_index {} is not found", tr_index);

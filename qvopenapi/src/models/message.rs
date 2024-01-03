@@ -1,6 +1,6 @@
-use crate::*;
 use crate::utils::from_cp949;
 use crate::utils::from_cp949_ptr;
+use crate::*;
 use log::*;
 use qvopenapi_bindings::MessageHeader;
 use qvopenapi_bindings::OutDataBlock;
@@ -38,7 +38,9 @@ pub fn parse_error(lparam: isize) -> std::result::Result<ErrorResponse, QvOpenAp
     let data_block = lparam as *const OutDataBlock<c_char>;
     unsafe {
         let tr_index = (*data_block).tr_index;
-        let error_msg = from_cp949_ptr((*(*data_block).p_data).sz_data).trim().into();
+        let error_msg = from_cp949_ptr((*(*data_block).p_data).sz_data)
+            .trim()
+            .into();
         Ok(ErrorResponse {
             tr_index,
             error_msg,

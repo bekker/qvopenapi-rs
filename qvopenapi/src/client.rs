@@ -1,8 +1,11 @@
-use std::{sync::{Arc, RwLock, Mutex}, collections::VecDeque};
+use std::{
+    collections::VecDeque,
+    sync::{Arc, Mutex, RwLock},
+};
 
 use serde_json::to_string_pretty;
 
-use crate::{*, window_mgr::message_const::*, error::*, models::*};
+use crate::{error::*, models::*, window_mgr::message_const::*, *};
 
 pub trait QvOpenApiRequest: Send + Sync {
     fn before_post(&self) -> Result<(), QvOpenApiError>;
@@ -18,15 +21,27 @@ pub trait AbstractQvOpenApiClient {
     fn set_hwnd(&self, new_hwnd: isize);
 
     fn on_connect(&self, callback: Box<dyn FnMut(&ConnectResponse) + Send>) {
-        self.get_handler().message_handler.lock().unwrap().on_connect = callback;
+        self.get_handler()
+            .message_handler
+            .lock()
+            .unwrap()
+            .on_connect = callback;
     }
 
     fn on_disconnect(&self, callback: Box<dyn FnMut() + Send>) {
-        self.get_handler().message_handler.lock().unwrap().on_disconnect = callback;
+        self.get_handler()
+            .message_handler
+            .lock()
+            .unwrap()
+            .on_disconnect = callback;
     }
 
     fn on_socket_error(&self, callback: Box<dyn FnMut() + Send>) {
-        self.get_handler().message_handler.lock().unwrap().on_socket_error = callback;
+        self.get_handler()
+            .message_handler
+            .lock()
+            .unwrap()
+            .on_socket_error = callback;
     }
 
     fn on_data(&self, callback: Box<dyn FnMut(&DataResponse) + Send>) {
@@ -38,11 +53,19 @@ pub trait AbstractQvOpenApiClient {
     }
 
     fn on_message(&self, callback: Box<dyn FnMut(&MessageResponse) + Send>) {
-        self.get_handler().message_handler.lock().unwrap().on_message = callback;
+        self.get_handler()
+            .message_handler
+            .lock()
+            .unwrap()
+            .on_message = callback;
     }
 
     fn on_complete(&self, callback: Box<dyn FnMut(i32) + Send>) {
-        self.get_handler().message_handler.lock().unwrap().on_complete = callback;
+        self.get_handler()
+            .message_handler
+            .lock()
+            .unwrap()
+            .on_complete = callback;
     }
 
     fn on_error(&self, callback: Box<dyn FnMut(&ErrorResponse) + Send>) {
@@ -58,23 +81,22 @@ pub trait AbstractQvOpenApiClient {
         cert_password: &str,
     ) -> Result<(), QvOpenApiError> {
         self.set_hwnd(new_hwnd);
-        self.query(TR_INDEX_CONNECT, Arc::new(ConnectRequest {
-            account_type,
-            id: id.into(),
-            password: password.into(),
-            cert_password: cert_password.into(),
-        }))
+        self.query(
+            TR_INDEX_CONNECT,
+            Arc::new(ConnectRequest {
+                account_type,
+                id: id.into(),
+                password: password.into(),
+                cert_password: cert_password.into(),
+            }),
+        )
     }
 
     fn disconnect(&self) -> Result<(), QvOpenApiError> {
-        self.query(-1, Arc::new(DisconnectRequest{}))
+        self.query(-1, Arc::new(DisconnectRequest {}))
     }
 
-    fn query(
-        &self,
-        tr_index: i32,
-        req: Arc<dyn QvOpenApiRequest>
-    ) -> Result<(), QvOpenApiError>;
+    fn query(&self, tr_index: i32, req: Arc<dyn QvOpenApiRequest>) -> Result<(), QvOpenApiError>;
 }
 
 impl AbstractQvOpenApiClient for QvOpenApiClient {
@@ -137,7 +159,7 @@ impl QvOpenApiClientMessageHandler {
 
 pub struct QvOpenApiClientMessageCallbacks {
     pub on_connect: Box<dyn FnMut(&ConnectResponse) + Send>,
-    pub on_disconnect: Box<dyn FnMut() + Send >,
+    pub on_disconnect: Box<dyn FnMut() + Send>,
     pub on_socket_error: Box<dyn FnMut() + Send>,
     pub on_data: Box<dyn FnMut(&DataResponse) + Send>,
     pub on_sise: Box<dyn FnMut(&DataResponse) + Send>,
@@ -156,7 +178,11 @@ impl QvOpenApiClient {
 }
 
 impl QvOpenApiClientMessageHandler {
-    pub fn on_wmca_msg(&self, wparam: usize, lparam: isize) -> std::result::Result<(), QvOpenApiError> {
+    pub fn on_wmca_msg(
+        &self,
+        wparam: usize,
+        lparam: isize,
+    ) -> std::result::Result<(), QvOpenApiError> {
         debug!("on_wmca_msg {} {}", wparam, lparam);
         match u32::try_from(wparam).unwrap() {
             CA_CONNECTED => {
@@ -180,21 +206,30 @@ impl QvOpenApiClientMessageHandler {
             }
             CA_RECEIVEDATA => {
                 let res = models::parse_data(lparam)?;
-                debug!("CA_RECEIVEDATA [TR{}] {}", res.tr_index, to_string_pretty(&res)?);
+                debug!(
+                    "CA_RECEIVEDATA [TR{}] {}",
+                    res.tr_index,
+                    to_string_pretty(&res)?
+                );
                 let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_data)(&res);
                 Ok(())
             }
             CA_RECEIVESISE => {
                 let res = models::parse_sise(lparam)?;
-                debug!("CA_RECEIVESISE [TR{}] {}", res.tr_index, to_string_pretty(&res)?);
+                debug!(
+                    "CA_RECEIVESISE [TR{}] {}",
+                    res.tr_index,
+                    to_string_pretty(&res)?
+                );
                 let mut handler = self.message_handler.lock().unwrap();
                 (handler.on_sise)(&res);
                 Ok(())
             }
             CA_RECEIVEMESSAGE => {
                 let res = models::parse_message(lparam)?;
-                debug!("CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
+                debug!(
+                    "CA_RECEIVEMESSAGE [TR{}] [{}] \"{}\"",
                     res.tr_index, res.msg_code, res.msg
                 );
                 let mut handler = self.message_handler.lock().unwrap();

@@ -1,8 +1,13 @@
 use chrono::TimeZone;
 use qvopenapi_bindings::LoginBlock;
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
-use crate::{utils::{from_cp949, SEOUL_TZ}, error::*, wmca_lib, client::QvOpenApiRequest};
+use crate::{
+    client::QvOpenApiRequest,
+    error::*,
+    utils::{from_cp949, SEOUL_TZ},
+    wmca_lib,
+};
 
 pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOpenApiError> {
     let data_block = lparam as *const LoginBlock;
@@ -37,7 +42,9 @@ pub fn parse_connect(lparam: isize) -> std::result::Result<ConnectResponse, QvOp
             })
             .collect();
 
-        let login_timestamp = SEOUL_TZ.datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?.timestamp();
+        let login_timestamp = SEOUL_TZ
+            .datetime_from_str(&login_datetime_str, "%Y%m%d%H%M%S")?
+            .timestamp();
 
         Ok(ConnectResponse {
             login_timestamp,

@@ -1,15 +1,17 @@
-extern crate qvopenapi_sys;
 extern crate qvopenapi_bindings;
+extern crate qvopenapi_sys;
 #[macro_use]
 extern crate lazy_static;
+mod client;
 pub mod error;
 pub mod models;
+mod utils;
 mod window_mgr;
 mod wmca_lib;
-mod client;
-mod utils;
 
-pub use wmca_lib::{init, is_connected, set_server, set_port};
+pub use client::{
+    AbstractQvOpenApiClient, QvOpenApiClient, QvOpenApiClientMessageHandler, QvOpenApiRequest,
+};
 use log::*;
 pub use window_mgr::{WindowHelper, WindowStatus};
-pub use client::{AbstractQvOpenApiClient, QvOpenApiClientMessageHandler, QvOpenApiClient, QvOpenApiRequest};
+pub use wmca_lib::{init, is_connected, set_port, set_server};

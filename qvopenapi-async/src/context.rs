@@ -1,9 +1,15 @@
-use std::{sync::{Mutex, Arc}, time::Instant, task::{Waker, Context, Poll}, collections::HashMap, future::Future, pin::Pin};
+use std::{
+    collections::HashMap,
+    future::Future,
+    pin::Pin,
+    sync::{Arc, Mutex},
+    task::{Context, Poll, Waker},
+    time::Instant,
+};
 
 use log::error;
 use qvopenapi::{error::*, models::*};
-use serde_json::{Value, json};
-
+use serde_json::{json, Value};
 
 pub struct TrContext {
     pub tr_index: i32,
@@ -56,7 +62,7 @@ impl TrContext {
             error!("Expected tr type QUERY, but {:?} found", self.tr_type);
             return false;
         }
-    
+
         let mut status = self.status.lock().unwrap();
         status.set_done();
         return true;
@@ -71,7 +77,9 @@ impl TrContext {
         status.messages.push(msg.clone());
 
         if msg.msg.contains("잘못된 계좌 인덱스 번호") {
-            status.error_type = Some(QvOpenApiError::BadRequestError { message: "잘못된 계좌 인덱스 번호".into() });
+            status.error_type = Some(QvOpenApiError::BadRequestError {
+                message: "잘못된 계좌 인덱스 번호".into(),
+            });
             status.set_done();
             return true;
         }
@@ -85,7 +93,10 @@ impl TrContext {
     }
 
     pub fn on_timeout(&self) -> bool {
-        error!("Request timed out (tr_index: {}, tr_type: {:?})", self.tr_index, self.tr_type);
+        error!(
+            "Request timed out (tr_index: {}, tr_type: {:?})",
+            self.tr_index, self.tr_type
+        );
         self.on_custom_error(QvOpenApiError::RequestTimeoutError)
     }
 
@@ -100,7 +111,7 @@ impl TrContext {
 #[derive(Debug, Clone)]
 pub enum TrType {
     CONNECT,
-    QUERY
+    QUERY,
 }
 
 pub struct TrContextStatus {
@@ -115,7 +126,15 @@ pub struct TrContextStatus {
 
 impl TrContextStatus {
     fn new() -> TrContextStatus {
-        TrContextStatus { output: Value::Null, is_done: false, waker: None, result: HashMap::new(), messages: Vec::new(), errors: Vec::new(), error_type: None }
+        TrContextStatus {
+            output: Value::Null,
+            is_done: false,
+            waker: None,
+            result: HashMap::new(),
+            messages: Vec::new(),
+            errors: Vec::new(),
+            error_type: None,
+        }
     }
 
     fn set_done(&mut self) {
@@ -143,16 +162,13 @@ pub struct TrFuture {
 impl Future for TrFuture {
     type Output = Result<Value, QvOpenApiError>;
 
-    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output>
-    {
+    fn poll(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Self::Output> {
         match &self.context {
             Ok(context) => {
                 let mut status = context.status.lock().unwrap();
                 Self::poll_for_status(&mut status, cx)
-            },
-            Err(e) => {
-                Poll::Ready(Err(e.clone()))
             }
+            Err(e) => Poll::Ready(Err(e.clone())),
         }
     }
 }
@@ -162,12 +178,18 @@ impl TrFuture {
         TrFuture { context: context }
     }
 
-    fn poll_for_status(status: &mut TrContextStatus, cx: &mut Context<'_>) -> Poll<Result<Value, QvOpenApiError>>
-    {
+    fn poll_for_status(
+        status: &mut TrContextStatus,
+        cx: &mut Context<'_>,
+    ) -> Poll<Result<Value, QvOpenApiError>> {
         if status.is_done {
             Poll::Ready(Ok(status.output.clone()))
         } else {
-            if status.waker.as_ref().map_or(true, |w| !w.will_wake(cx.waker())) {
+            if status
+                .waker
+                .as_ref()
+                .map_or(true, |w| !w.will_wake(cx.waker()))
+            {
                 status.waker = Some(cx.waker().clone());
             }
             Poll::Pending
