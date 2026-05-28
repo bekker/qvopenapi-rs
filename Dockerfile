@@ -11,6 +11,9 @@ RUN apt-get update
 RUN apt-get install -y \
     fonts-nanum fonts-nanum-coding
 
+# DLL opens browser occasionally for notices and etc. Remove unnecessary browser
+RUN apt-get remove -y firefox
+
 # Set correct locale
 RUN locale-gen ko_KR.UTF-8 && \
     update-locale LANG=ko_KR.UTF-8 LC_MESSAGES=POSIX
