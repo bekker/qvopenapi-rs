@@ -29,15 +29,15 @@ USER wineuser
 
 RUN wine cmd.exe /c "echo winesetup complete"
 
-# ============== Download DLL
+# ============== Unzip DLL
 FROM setup AS dll
 
 USER root
 RUN apt-get update && apt-get install -y curl
 USER wineuser
 
-RUN curl -O https://download.nhqv.com/download/iflgtrading/openapi.qv.zip && \
-    unzip openapi.qv.zip -d openapi.qv && \
+COPY qvopenapi.qv.20230530.zip openapi.qv.zip
+RUN unzip openapi.qv.zip -d openapi.qv && \
     cp -R openapi.qv/bin bin && \
     rm -R openapi.qv && rm openapi.qv.zip
 
