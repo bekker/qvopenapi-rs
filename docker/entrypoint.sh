@@ -4,8 +4,9 @@ set -e
 export DISPLAY=:99
 export LANG=ko_KR.UTF-8
 
-# Clean up stale lock files from previous runs (e.g. container restart)
+# Clean up stale files from previous runs (e.g. docker start on existing container)
 rm -f /tmp/.X99-lock
+rm -f /tmp/.X11-unix/X99
 
 # Start Xvfb
 Xvfb :99 -screen 0 1024x768x24 &
